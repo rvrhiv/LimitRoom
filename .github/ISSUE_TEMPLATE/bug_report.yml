@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible problem with LimitRoom.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve LimitRoom. English and Russian are welcome.
+        For security issues, use https://github.com/rvrhiv/LimitRoom/security/advisories/new instead.
+        Do not attach credentials, agent settings, databases, raw API responses, or personal usage exports.
+  - type: input
+    id: version
+    attributes:
+      label: LimitRoom version
+      description: Find it in the panel footer or Settings.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Mac and macOS version
+      description: Include chip family and whether you use a built-in notched or external display.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Codex
+        - Claude Code
+        - Cursor
+        - Menu bar or notch
+        - Settings or history
+        - App updates
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include the agent version and connection method if relevant. Use synthetic examples.
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Redacted details or screenshots
+      description: Remove account information, local paths, and unrelated apps. Demo screenshots are preferred.

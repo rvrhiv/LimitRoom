@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/rvrhiv/LimitRoom/security/advisories/new
+    about: Keep vulnerability details and sensitive information out of public issues.
+  - name: Connection and usage guide
+    url: https://github.com/rvrhiv/LimitRoom/blob/main/docs/usage.md
+    about: Setup, quota selection, local history, and privacy.

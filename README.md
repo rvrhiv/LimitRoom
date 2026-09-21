@@ -1,128 +1,83 @@
-# LimitRoom
+<p align="center">
+  <img src="docs/assets/icon.svg" width="96" height="96" alt="LimitRoom icon">
+</p>
 
-Room for your next idea. Нативный macOS-индикатор остатка квот Codex, Claude Code и Cursor.
+<h1 align="center">LimitRoom</h1>
 
-**В разработке: 0.5.1 (7), ранняя сборка.** Приложение пока имеет ad-hoc подпись, без Apple Developer ID/notarization. Реальные источники требуют подключения и сверки с исходными приложениями; демонстрационные цифры никогда не выдаются за личную квоту. Доступные опубликованные сборки: [GitHub Releases](https://github.com/rvrhiv/LimitRoom/releases).
+<p align="center"><strong>Room for your next idea.</strong><br>Know how much AI coding quota you have left, without leaving your flow.</p>
 
-Скачать: [LimitRoom 0.5.0 для Apple Silicon и Intel](https://github.com/rvrhiv/LimitRoom/releases/download/v0.5.0/LimitRoom-0.5.0.zip). Завершите старый экземпляр, распакуйте архив и переместите `LimitRoom.app` в «Программы». С 0.4.1 требуется эта однократная ручная установка; канал последующих обновлений уже подключён.
+<p align="center">
+  <a href="https://github.com/rvrhiv/LimitRoom/releases/latest"><strong>Download for macOS</strong></a> ·
+  <a href="docs/usage.md">Getting started</a> ·
+  <a href="README.ru.md">Русский</a>
+</p>
 
-## Что реализовано
+<p align="center">
+  <a href="https://github.com/rvrhiv/LimitRoom/actions/workflows/ci.yml"><img src="https://github.com/rvrhiv/LimitRoom/actions/workflows/ci.yml/badge.svg" alt="Build status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-83d0b5" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-555555" alt="Requires macOS 14 or later">
+</p>
 
-- Иконка агента, круглое кольцо и процент остатка в menu bar; компоненты настраиваются отдельно. Панель открывается по клику. Реальный индикатор и предпросмотр используют одно template-изображение.
-- Альтернативная панель у камеры: единый чёрный контур, скруглённые плечи, раскрытие по наведению/клику, булавка удержания, анимация с учётом Reduce Motion и отключаемый тактильный отклик. Встроенный экран без выреза или закрытая крышка — временный возврат в menu bar.
-- Три одинаковые карточки с явным выбором окна, планом, временем показания и reset. Вкладки «Квоты», «Статистика», «Настройки», версия внизу. Неизвестные поля не выдумываются.
-- Иконка A «Запас» включена в ресурсы приложения.
-- SQLite-история за 90 дней; общий график темпа в процентных пунктах окна за сутки. Сбросы, смена аккаунта/плана и пробелы разрывают линии.
-- Независимый выбор окон для графика и menu bar; экспорт CSV/JSON и очистка истории.
-- Кэш последних значений с пометкой устаревания; выбор интервала чтения источников: 1, 5, 30 минут или час (по умолчанию 5 минут), а также обновление после сна.
-- Явное подключение источников: для Cursor — подтверждаемый доступ к входу установленного приложения либо отдельный профиль WebKit; opt-in уведомления и автозапуск через macOS.
-- Русский/английский по языку macOS, системное оформление, Reduce Motion.
-- Настройки с разделами, живым предпросмотром и отдельной страницей каждого агента; официальный значок Cursor.
-- Sparkle 2.10.0: подписанные обновления, заметная кнопка «Обновить LimitRoom» с номером новой версии над нижней строкой панели, проверка подписи перед установкой. Скачивание и перезапуск — по нажатию, не при обнаружении версии.
+LimitRoom is a native macOS quota monitor for **Codex, Claude Code, and Cursor**. Pin the allowance that matters to your menu bar, or let it live beside your MacBook's notch. Open one panel to see the rest.
 
-## Локальный запуск
+<p align="center">
+  <img src="docs/assets/notch.png" height="510" alt="Expanded notch panel with Codex, Claude Code, and Cursor allowance cards">
+  <img src="docs/assets/statistics.png" height="510" alt="Statistics comparing allowance consumption across agents">
+</p>
 
-Нужны полный Xcode со Swift 6 и macOS 14+. CI использует Xcode 26.2. Единственная сторонняя зависимость — зафиксированный Sparkle 2.10.0 через SwiftPM. Пакетов npm нет.
+<p align="center"><sub>Actual app views rendered with demonstration data. No personal accounts or usage are shown.</sub></p>
 
-Перед обычным запуском новой сборки завершите старый LimitRoom через меню `… → Завершить LimitRoom`, чтобы не держать два сборщика. Скрипт не заменяет копию в `/Applications`.
+## A little more headroom
+
+- **One glance, one chosen quota.** An agent icon, remaining-allowance ring, and percentage. Choose which parts to show; switch the pinned window from any agent card.
+- **Two ways to stay out of the way.** Click the menu-bar indicator, or hover over the notch to reveal all three cards. A pin keeps the notch panel open when you need it.
+- **See your pace.** Keep 90 days of local history, compare observed consumption trends, and export CSV or JSON. Charts measure changes in quota percentages, not tokens or cost.
+- **Make it feel like your Mac.** Live display previews, light and dark appearance, optional haptics, Reduce Motion support, and English or Russian based on your system language.
+- **Stay in control.** Refresh every 1, 5, 30, or 60 minutes; opt into low-quota notifications and choose whether to launch at login. Signed app updates install only when you choose.
+
+<p align="center">
+  <img src="docs/assets/settings.png" width="840" alt="Appearance settings with live menu-bar and notch previews, component controls, and width adjustment">
+</p>
+
+## Get started
+
+1. Download the ZIP from the [latest release](https://github.com/rvrhiv/LimitRoom/releases/latest).
+2. Quit any older LimitRoom instance, unzip, and move **LimitRoom.app** to **Applications**.
+3. Open the app, connect your agents in **Settings → Agents**, and select a quota to pin.
+
+Requires **macOS 14 or later**. Universal builds include **Apple Silicon and Intel**. Notch mode requires a supported built-in notched display; other setups use the menu bar.
+
+> Early releases are ad-hoc signed, not Apple Developer ID signed or notarized. macOS may block the first launch. Sparkle verifies app updates, but does not replace Apple's first-install security checks. See the [installation notes](docs/usage.md#installation).
+
+## Your agents, together
+
+| Agent | Connection | What to expect |
+| --- | --- | --- |
+| **Codex** | Your installed Codex CLI and existing ChatGPT sign-in | Subscription windows reported by Codex; requires a CLI with App Server support. |
+| **Claude Code** | An explicitly enabled, reversible status-line helper | Quotas reported by an active Claude Code session; availability depends on its version and subscription. |
+| **Cursor** | Your installed Cursor session, with your permission | **Experimental** personal usage via Cursor's private dashboard endpoints; compatibility can change. An isolated web sign-in is also available. |
+
+One active account per agent. Subscription details and reset times appear when the source provides them. Missing or stale data stays visibly missing or stale — it never becomes a made-up balance. [Connection guide →](docs/usage.md#connect-your-agents)
+
+## Local-first by design
+
+No LimitRoom account, backend, or telemetry. History stays on your Mac. LimitRoom does not read your conversations or import browser cookies. Network requests go to the enabled agent's service and GitHub for updates; the app is not fully offline. [Data and privacy →](docs/usage.md#data-and-privacy)
+
+## Build and contribute
+
+With full Xcode and Swift 6 installed:
 
 ```sh
 git clone https://github.com/rvrhiv/LimitRoom.git
 cd LimitRoom
-bash Scripts/build-app.sh
+bash Scripts/build-app.sh Release
 open build/LimitRoom.app --args --demo
 ```
 
-`--demo` — безопасный предпросмотр интерфейса: нет запросов к провайдерам, записи личной статистики или настроек отображения, уведомлений или настройки автозапуска. Завершите demo через меню `…` перед обычным запуском:
+Demo mode previews the UI without reading agent accounts or writing personal usage history. The build script leaves your installed app untouched.
 
-```sh
-open build/LimitRoom.app
-```
+[Contributing](CONTRIBUTING.md) · [Architecture](docs/architecture.md) · [Releasing](docs/releasing.md) · [Report a bug](https://github.com/rvrhiv/LimitRoom/issues/new/choose) · [Security](SECURITY.md)
 
-Локальная `.app` имеет ad-hoc подпись. Опубликованные ранние сборки также не нотарифицированы: macOS может блокировать первый запуск. Подпись Sparkle защищает обновления, но не заменяет Developer ID. Не отключайте Gatekeeper. Переместите приложение в стабильное место **до** настройки автозапуска. Автоматическое подключение Claude использует отдельную стабильную копию helper; ручная команда по-прежнему зависит от пути к приложению.
+## License
 
-Для быстрой проверки модулей:
-
-```sh
-swift build
-```
-
-Режим у камеры включается во вкладке «Настройки» или в полном окне настроек. Он заменяет menu bar, а не создаёт второй индикатор. Выбор строки квоты сразу действует в обоих режимах. Булавка удерживает только панель; она не меняет выбранную квоту. При переходе в отдельное окно настроек панель у камеры сворачивается, включая закреплённое состояние. Повторное открытие приложения из Finder показывает настройки, даже если панель скрыта в fullscreen.
-
-В версии 0.4.1 закрытая панель показывает одну выбранную квоту по сторонам камеры и не занимает место под ней. Индикатор — иконка агента, круглое кольцо остатка и процент; компоненты настраиваются отдельно для строки меню, левой и правой стороны. Для каждой стороны также доступны сброс, название окна или скрытие. Сброс — относительное время, точная дата/время или скрытие. Живой предпросмотр использует реальные выбранные настройки. Ширина по умолчанию 88 pt, середина диапазона 56…120 pt; ранее сохранённые более широкие значения не сбрасываются. Блоки находятся выше значков строки меню, но ниже всплывающих меню: уменьшите ширину, скройте сторону или переключитесь в menu bar, если они мешают.
-
-В 0.4.1 раскрывающиеся заголовки кликабельны по всей ширине. Уровень чёлки исправлен с учётом сброса AppKit при `isFloatingPanel`; обычная смена Space не вызывает принудительное скрытие/создание заново. Тактильный отклик использует более отчётливый системный паттерн `levelChange`; его физическая сила зависит от трекпада. Аппаратные проверки описаны отдельно в verification.
-
-Отклик зависит от поддерживаемого трекпада и настроек macOS. Наведение не забирает клавиатурный фокус; Escape обрабатывается только когда сама панель получает клавиатурные события. Проверка физического отклика, Spaces, Stage Manager и закрытия крышки остаётся в [ручном чек-листе](docs/verification.md).
-
-## Подключение
-
-### Codex
-
-LimitRoom использует установленный официальный Codex CLI и его существующий вход в ChatGPT. В настройках можно задать абсолютный путь к `codex`; неверный явный путь не заменяется другим автоматически.
-
-Вызовы: `initialize`, `initialized`, `account/read`, `account/rateLimits/read`. App Server запускается отдельно и завершается после чтения. Разговоры не запрашиваются, auth-файлы не копируются. API-key billing не объявляется квотой подписки ChatGPT.
-
-Если установлен только Codex Desktop без доступного CLI, автоматическое подключение не гарантируется. Необходим доступный бинарник с поддержкой `app-server`.
-
-### Claude Code
-
-1. Нажмите «Подключить» в карточке Claude или полном окне настроек. LimitRoom настроит пользовательский `statusLine`, сохранит резервную копию и продолжит вызывать прежнюю команду, если она была.
-2. Перезапустите Claude Code, дождитесь ответа агента и обновите показания LimitRoom. Это настройка чтения квот, не вход в аккаунт.
-3. Доступные `rate_limits.five_hour` / `seven_day` появятся только если их передаёт Claude Code. Поддержка зависит от версии и подписки; настройки проекта могут переопределить пользовательский statusLine.
-
-Используется `~/.claude/settings.json` либо `CLAUDE_CONFIG_DIR`, если абсолютный путь передан в окружение приложения. Терминальные переменные не всегда наследуются GUI-приложением; фактический путь показан в настройках. Ссылки, нестандартный statusLine и повреждённый JSON автоматически не заменяются. «Отключить» восстанавливает только прежний statusLine, сохраняя остальные актуальные настройки.
-
-Резервные копии и установленные helper находятся в `~/Library/Application Support/LimitRoom/ClaudeSetup/`, с закрытыми правами доступа. Копии содержат прежний settings.json, поэтому не отправляйте их вместе с диагностикой: там могут быть личные настройки или секреты. Проверка конфликта перед атомарной заменой защищает от обнаруженных параллельных изменений, но не может заблокировать стороннюю запись после самой проверки.
-
-Ручной вариант остаётся в раскрывающемся блоке настроек. Пример структуры (не копировать пути и scope буквально):
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "'/absolute/path/LimitRoom.app/Contents/Helpers/limitroom-claude-bridge' --scope 'copied-from-settings'"
-  }
-}
-```
-
-Helper читает stdin, сохраняет только поля квоты и локальный scope. Он не открывает `transcript_path`. Повторение неизменившихся данных не обновляет время наблюдения: это консервативная защита от replay, поэтому даже активная сессия с неизменным процентом может отображаться как устаревшая. Сам LimitRoom не запрашивает квоту Anthropic.
-
-Источник не сообщает надёжную идентичность аккаунта. После его смены нажмите «Я сменил аккаунт Claude…»: автоматическая команда обновится, ручную нужно заменить самостоятельно. Перезапустите Claude Code. Старые и новые наблюдения останутся разделены. Метаданные плана Claude доступны не всегда.
-
-### Cursor — экспериментально
-
-Войдите в установленный Cursor, затем в LimitRoom откройте настройки → Cursor → **«Подключить Cursor.app…»** и подтвердите доступ. Читается только запись текущего входа в `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb`; база открывается read-only. Чаты, проекты, браузеры и Keychain не читаются. Ключ используется только в памяти и только для HTTPS-запросов к `cursor.com`; в файлы LimitRoom и историю он не попадает. Истёкший вход нужно обновить в самом Cursor.
-
-Квота получается с серверов Cursor, а не из локальных разговоров. Адаптер читает `/api/usage-summary` и `/api/auth/me`, запрещает редиректы и проверяет совпадение аккаунта. Это **приватный контракт dashboard, не публичная гарантия Cursor**. Реальную подписку и соответствие цифр dashboard ещё нужно проверить после подтверждения. При отключении доступ LimitRoom прекращается, вход Cursor.app и история остаются.
-
-В блоке «Другой способ входа» сохранён отдельный WebKit-профиль LimitRoom; некоторые SSO-провайдеры не поддерживают встроенный вход. Он выбирается явно вместо Cursor.app, без автоматического переключения между аккаунтами. Cookies чужих приложений не импортируются. Старый web-вход не даёт разрешения читать Cursor.app.
-
-Cursor Models и Other Models показаны отдельно; Total берётся из ответа или вычисляется по явным `used/limit` при положительном лимите. Среднее двух процентов не вычисляется. Личный `overall` показывается как отдельный лимит расходов; командные пулы не используются. Без подтверждённой идентичности показывается отсутствие данных, а не сохранённый остаток другого аккаунта. Последнее измерение допустимо только для того же аккаунта с пометкой устаревания.
-
-## Данные и ограничения
-
-- `~/Library/Application Support/LimitRoom/`: история, последнее значение и quota-only bridge-файл.
-- Настройки — UserDefaults; локальный ключ Cursor не сохраняется в LimitRoom. Альтернативная web-сессия — собственное хранилище WebKit.
-- История не собирается, пока LimitRoom закрыт; Claude bridge может обновить одно последнее показание.
-- Экспорт не содержит email, запросов, токенов и путей рабочих проектов.
-- Графики не измеряют стоимость, число токенов или эффективность разных агентов.
-- Проверки обновлений обращаются к публичному GitHub Releases; токены владельца и данные агентов не отправляются. Без настроенного feed/public key проверка не запускается. В demo обновления отключены.
-
-План архитектуры шире текущего инкремента: прогноз в UI и адаптивный backoff ещё требуют следующих шагов. Установщик Claude реализован, но подключение к реальному Claude и совместимость с пользовательскими statusLine требуют ручной проверки. Точные результаты и ограничения: [verification](docs/verification.md). Сторонние знаки и зависимости: [атрибуция](THIRD_PARTY_NOTICES.md).
-
-## Обновления и выпуск версий
-
-С 0.4.1 нужно один раз установить 0.5.0 вручную: в старой версии нет updater. В последующих сборках доступна кнопка обновления в нижней части панели и страница «Обновления» в настройках. Проверки можно отключить, установка всегда требует нажатия и перезапускает LimitRoom. Настройка частоты чтения квот в разделе «Основные» не меняет частоту проверки версий приложения.
-
-Доверенные участники с правами записи запускают **Actions → Release → Run workflow** на `main`. Сборка и подписание выполняются на GitHub, Mac владельца не требуется. Подробности, настройка секрета и восстановление: [выпуск релиза](docs/releasing.md). Проверка приватности: [перед публикацией](docs/publication-privacy.md).
-
-Лицензия LimitRoom пока не выбрана; лицензия Sparkle не распространяется на код проекта. Сторонние знаки принадлежат их владельцам.
-
-## Архитектура
-
-`AllowanceCore` → `AllowanceStorage` / `AllowanceConnectors` → `AllowanceRuntime` → macOS app. WebKit и системная авторизация принадлежат слою приложения; декодирование Cursor — адаптеру.
-
-Подробности: [архитектура](docs/architecture.md), [домен](CONTEXT.md), [решения](docs/adr/), [план основы](docs/superpowers/plans/2026-09-20-native-foundation.md), [спецификация интерфейса](docs/superpowers/specs/2026-09-21-presentation-refresh-design.md).
-
-Автоматические тесты не добавляются без назначенных test-case ID согласно пользовательскому AGENTS.md; ID сейчас отсутствуют. Компиляция не заменяет поведенческие проверки.
+[MIT](LICENSE) © 2026 rvrhiv. Third-party libraries and agent marks retain their own terms; see [third-party notices](THIRD_PARTY_NOTICES.md). LimitRoom is an independent project, not affiliated with OpenAI, Anthropic, or Anysphere.

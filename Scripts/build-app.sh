@@ -29,6 +29,8 @@ cp "$limitroom_products/limitroom-claude-bridge" "$limitroom_app/Contents/Helper
 cp "$limitroom_products/LimitRoom.app/Contents/Info.plist" "$limitroom_app/Contents/Info.plist"
 cp "$limitroom_products/LimitRoom.app/Contents/Resources/LimitRoom.icns" "$limitroom_app/Contents/Resources/LimitRoom.icns"
 cp "$limitroom_root/Resources/Sparkle-LICENSE.txt" "$limitroom_app/Contents/Resources/Sparkle-LICENSE.txt"
+cp "$limitroom_root/LICENSE" "$limitroom_app/Contents/Resources/LICENSE"
+cp "$limitroom_root/THIRD_PARTY_NOTICES.md" "$limitroom_app/Contents/Resources/THIRD_PARTY_NOTICES.md"
 /usr/bin/codesign --force --sign - "$limitroom_app/Contents/Helpers/limitroom-claude-bridge"
 # Xcode strips development headers from the embedded framework; seal that
 # container again. Its nested vendor-signed helpers are preserved unchanged.

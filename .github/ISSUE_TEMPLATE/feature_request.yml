@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest a focused improvement or a new agent connection.
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the workflow and who it helps. English and Russian are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested solution
+      description: Include alternatives if you have considered them.
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source and privacy considerations
+      description: For a new agent, link public quota/API documentation and explain the account type. Never attach credentials or private responses.
