@@ -4,7 +4,15 @@
 
 Download the ZIP from the [latest release](https://github.com/rvrhiv/LimitRoom/releases/latest), quit any older instance, and move the extracted app to **Applications**. Put it in this stable location before enabling launch at login. Requirements: macOS 14+, Apple Silicon or Intel.
 
-Early builds are not Developer ID signed or notarized. macOS may block the first launch. Review the source and release before deciding whether to allow it in macOS security settings; do not disable Gatekeeper. Building locally is another option: see [Contributing](../CONTRIBUTING.md#local-development).
+Current builds are ad-hoc signed, not Developer ID signed or notarized. macOS may say it cannot verify LimitRoom or check it for malicious software. If the ZIP came from this repository's releases and you trust the build:
+
+1. Try opening **LimitRoom.app** from **Applications**. Dismiss the warning without moving the app to Trash.
+2. In **System Settings → Privacy & Security**, scroll down and select **Open Anyway** for LimitRoom.
+3. Choose **Open** in the confirmation; authenticate if requested.
+
+This adds an exception for LimitRoom. Keep Gatekeeper and quarantine intact; do not bypass warnings about detected malware or a damaged app. See [Apple's first-launch guide](https://support.apple.com/en-us/102445). Building locally is another option: see [Contributing](../CONTRIBUTING.md#local-development).
+
+Sparkle verifies app updates, but does not replace Apple's first-install security checks.
 
 Open **Settings → Updates** to check for a newer version. When one is found, the panel shows an **Update LimitRoom** button. Installation is explicit and relaunches the app; automatic version checks can be disabled. These checks are independent of quota refresh.
 

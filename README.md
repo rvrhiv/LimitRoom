@@ -47,7 +47,17 @@ LimitRoom is a native macOS quota monitor for **Codex, Claude Code, and Cursor**
 
 Requires **macOS 14 or later**. Universal builds include **Apple Silicon and Intel**. Notch mode requires a supported built-in notched display; other setups use the menu bar.
 
-> Early releases are ad-hoc signed, not Apple Developer ID signed or notarized. macOS may block the first launch. Sparkle verifies app updates, but does not replace Apple's first-install security checks. See the [installation notes](docs/usage.md#installation).
+### First launch on macOS
+
+Current releases are ad-hoc signed, without Apple Developer ID or notarization. macOS may say it cannot verify LimitRoom or check it for malicious software.
+
+If you downloaded the app from this repository's releases and trust the build:
+
+1. Try opening **LimitRoom.app** in **Applications**, then dismiss the warning without moving the app to Trash.
+2. Go to **System Settings → Privacy & Security**, scroll down, and click **Open Anyway** for LimitRoom.
+3. Confirm with **Open**; authenticate if requested.
+
+This allows this app without disabling Gatekeeper. Do not bypass warnings about detected malware or a damaged app. See [Apple's instructions](https://support.apple.com/en-us/102445) and the [installation notes](docs/usage.md#installation).
 
 ## Your agents, together
 
