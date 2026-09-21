@@ -6,8 +6,8 @@
   <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
   <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.5.0</string>
-  <key>CFBundleVersion</key><string>6</string>
+  <key>CFBundleShortVersionString</key><string>0.5.1</string>
+  <key>CFBundleVersion</key><string>7</string>
   <key>CFBundleIconFile</key><string>LimitRoom</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
@@ -15,7 +15,6 @@
   <key>NSHighResolutionCapable</key><true/>
   <key>CFBundleLocalizations</key><array><string>en</string><string>ru</string></array>
   <key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>com.rvrhiv.LimitRoom</string><key>CFBundleURLSchemes</key><array><string>limitroom</string></array></dict></array>
-  <key>LimitRoomAppGroup</key><string>$(LIMITROOM_APP_GROUP)</string>
   <key>SUFeedURL</key><string>https://github.com/rvrhiv/LimitRoom/releases/latest/download/appcast.xml</string>
   <key>SUPublicEDKey</key><string>mc9efLdZWQilIsRSADvXLaRlPHrcDWgBtmieFqNc4kA=</string>
   <key>SURequireSignedFeed</key><true/>

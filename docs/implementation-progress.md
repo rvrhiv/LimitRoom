@@ -1,5 +1,13 @@
 # LimitRoom implementation ledger
 
+## Settings and app-update action 0.5.1 — 2026-09-22
+
+- Bounded follow-up to the accepted design: settings accent and cleanup, saved 1/5/30/60-minute polling preference, collapse the notch on opening Settings, and a prominent version-labelled app-update button. User clarified that the button is for the GitHub app update, not quota readings.
+- Removed obsolete extension implementation, targets and references throughout tracked source and docs without changing old Git commits or deleting local user data. Architecture stays Core → Storage/Connectors → Runtime → App.
+- Continued inline in the established clean public-lineage checkout. No new design approval pause under the user's existing waiver; no new tests without assigned IDs.
+- Prepared 0.5.1 (7), local universal app/archive and manual GitHub Actions instructions. Source push is authorized; Release dispatch, tags and publication are reserved for the user. No installed-app replacement or live-agent configuration changes.
+- Local build/render/validation results and explicit native acceptance limits are recorded in `docs/verification.md`. Read-only review found no Critical or Important issues; both Minor documentation findings were corrected. The review does not establish native interaction, elapsed-time polling, live update replacement or Intel execution; those remain manual acceptance checks.
+
 ## Native indicator and Cursor.app — 2026-09-21
 
 Plan: `docs/superpowers/plans/2026-09-21-native-indicator-cursor.md`; base `f72f170`.
@@ -28,7 +36,7 @@ Plan: `docs/superpowers/plans/2026-09-21-notch-polish.md`; increment starts at `
 - Final review of `89247a8..a4750fc`: no Critical, three Important, no Minor. One fix pass added a full reconnect guard, pre-commit serialized-size validation/compact fallback, and scope-first disconnect with recoverable managed-state detection. The durable scope marker is authoritative across restart. Fresh builds/lints/signature checks pass; no new tests without IDs and no second reviewer.
 - Final: Ruling: Physical cutout/layering/full-target cursor require native acceptance — own-view renders cannot prove WindowServer behavior — cost: visual/interaction corrections may remain.
 - Final: Ruling: Live Claude session compatibility and previous-command execution stay unverified — actual configuration was explicitly left untouched — cost: configuration/session-specific corrections may be needed.
-- Final: Ruling: Earlier foundation, installed widgets, notarization and publication are outside this increment — preserve existing boundaries — cost: this is a local preview, not a validated public release.
+- Final: Ruling: Earlier foundation, notarization and publication are outside this increment — preserve existing boundaries — cost: this is a local preview, not a validated public release.
 
 ## Integrated notch — 2026-09-21
 
@@ -44,7 +52,7 @@ Plan: `docs/superpowers/plans/2026-09-21-integrated-notch.md`; increment starts 
 - Final: minor (deferred): exact-date reset after its deadline still shows the past timestamp plus a stale icon; explicit awaiting text is in the tooltip/accessibility only. Data is honest; a visible awaiting phrase can be refined later.
 - Final: Ruling: Physical camera hover/focus, native picker tracking, haptic feel and rapid motion remain unverified — source/renders cannot establish those device interactions — cost if wrong: user testing may expose interaction-specific corrections.
 - Final: Ruling: Spaces/fullscreen/Stage Manager, display/lid and accessibility traversal remain manual acceptance items — no interactive system transitions were exercised — cost if wrong: platform-specific visibility or navigation issues may remain.
-- Final: Ruling: Leave live providers, history/storage, installed widgets, notarization and distribution outside this increment — these contracts were not changed and local UI packaging does not establish their readiness — cost if wrong: this is not a verified public release.
+- Final: Ruling: Leave live providers, history/storage, notarization and distribution outside this increment — these contracts were not changed and local UI packaging does not establish their readiness — cost if wrong: this is not a verified public release.
 
 ## Native foundation — 2026-09-20
 
@@ -55,13 +63,13 @@ Plan: `docs/superpowers/plans/2026-09-20-native-foundation.md`.
 - Ruling: Assigned test-case IDs are absent. Follow user AGENTS.md: no new automated tests; compile and document manual checks. Cost: behavioral regression coverage remains incomplete.
 - Ruling: Private releases do not enable public updating. Keep updater inactive until a reachable signed channel exists. Cost: first local builds update manually.
 - Ruling: Cursor personal login is an experimental integration requiring live validation, not a guaranteed public API. Cost: automatic Cursor data can remain unavailable while the rest of the app works.
-- Pre-flight: Core types are shared by storage/connectors/runtime/widget; only the app links all modules. No secrets cross into widget/history.
+- Pre-flight: Core types are shared by storage/connectors/runtime; only the app links all modules. No secrets cross into history.
 - Task 1: implemented; Core builds. Rates break across cycles/scopes/plans and long gaps. No automated behavioral tests without IDs.
-- Task 2: implemented; SQLite actor, transactional schema, retention, export, cache and sanitized widget snapshot. Actual Codex observation persisted.
+- Task 2: implemented; SQLite actor, transactional schema, retention, export and cache. Actual Codex observation persisted.
 - Task 3: implemented initial connectors; Codex live transport confirmed; Claude bridge has active-scope/replay guards; Cursor private endpoint projection + isolated WebKit transport implemented but live login unverified.
 - Task 4: implemented baseline scheduler/coalescing, persisted last-known values, configuration generations, alert crossings and opt-in platform settings. Adaptive backoff and actual OS behaviors remain release follow-ups.
 - Task 5: implemented RU/EN native overview/settings/history. Demo/light/dark rendered; live Codex app started. No full accessibility/permission-dialog audit claimed.
-- Task 6: Xcode app/widget/helper build Universal. Local ad-hoc app packaged without widget. Signed installed-widget runtime remains unverified.
+- Task 6: Xcode app/helper build Universal. Local ad-hoc app packaged. Installed-app behavior remains a separate manual acceptance check.
 - Task 7: independent review findings fixed and narrowly rechecked; fresh builds and run evidence recorded in docs/verification.md. Implementation committed locally as `e734aa0`; remote publication remains blocked by Git authentication.
 - Review ruling: Keep a conservative Claude baseline when fields regress, disappear or reset moves backwards. Tradeoff: an unchanged/corrected reading can remain stale until trustworthy progress/new cycle.
 - Review ruling: Generation checks protect both UI replacement and notification side effects after asynchronous work; no source change may be undone by superseded reads.
@@ -77,12 +85,12 @@ Plan: `docs/superpowers/plans/2026-09-21-presentation-refresh.md`.
 - Replaced mixed quota layout with shared AgentCard, explicit window selectors, quotas/statistics/settings tabs and version footer. Full connection/history actions remain available.
 - Added PresentationCoordinator, one shared owner of full windows, NSScreen-based geometry, a nonactivating panel and passive camera backing. Hover tasks and finite frame transitions are cancellable; hold is transient; haptics are user-triggered and rate-limited.
 - Release `0.2.0 (2)` built Universal with a valid local ad-hoc signature. Own-view previews inspected in RU/EN and light/dark. Exact evidence and hardware-only limits are in `docs/verification.md`.
-- No new tests without assigned IDs; no data-layer, connector, account, storage or WidgetSnapshot contract changes. Widget metadata version follows the app version; installed-widget validation is still separate.
+- No new tests without assigned IDs; no data-layer, connector, account, storage contract changes.
 - Fresh whole-change review `c970847..add6ca7`: no confirmed Critical/Important issues; duration-only compact Cursor window names deferred as Minor. Full titles and selected identities remain correct.
 - Ruling: Continue in the existing feature checkout rather than create a second worktree — it contains this task's approved design history — cost: no extra checkout isolation; unrelated work must remain intact.
 - Ruling: Keep physical haptics and hover/focus unverified — own-view renders do not establish device interaction — cost: user testing may require follow-up adjustments.
 - Ruling: Keep fullscreen/Spaces/Stage Manager/lid/menu auto-hide unverified — WindowServer transitions were not exercised — cost: hardware-specific corrections may be needed.
 - Ruling: Keep pointer routing at transparent shoulders and animation boundaries unverified — frame separation is not an interaction check — cost: native edge hit targets may need adjustment.
 - Ruling: Include minimized-window restoration, VoiceOver and keyboard traversal in the manual pass — no confirmed regression was found — cost: unexercised restoration/accessibility issues may remain.
-- Ruling: Keep live provider validation, credentials, installed widgets and signed distribution outside this presentation increment — the contracts are unchanged — cost: local packaging is not a verified public release.
+- Ruling: Keep live provider validation, credentials and signed distribution outside this presentation increment — the contracts are unchanged — cost: local packaging is not a verified public release.
 - Ruling: Preserve the local feature branch without merge/push or a new integration approval — user requested continuous local implementation — cost: no remote backup or integration is performed.

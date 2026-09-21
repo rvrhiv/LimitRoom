@@ -43,7 +43,7 @@ secrets.*
 *.log
 ClaudeSetup/
 last-readings.json
+limitroom-*-v1.json
 claude-statusline.json
 claude-connection
-limitroom-widget-v1.json
 settings-before-*.json

@@ -4,7 +4,6 @@ import AllowanceRuntime
 import AllowanceStorage
 import AppKit
 import Observation
-import WidgetKit
 
 @MainActor @Observable
 final class AppModel {
@@ -21,6 +20,7 @@ final class AppModel {
   var errorMessage: String?
   var codexPath: String
   var notificationsEnabled: Bool
+  private(set) var quotaRefreshInterval: QuotaRefreshInterval
   var onboardingComplete: Bool
   var wantsLoginItem = true
   var historyDays = 7
@@ -57,6 +57,11 @@ final class AppModel {
     let preferences = UserDefaults.standard
     codexPath = preferences.string(forKey: "codexPath") ?? ""
     notificationsEnabled = preferences.bool(forKey: "notificationsEnabled")
+    quotaRefreshInterval =
+      isDemo
+      ? .fiveMinutes
+      : QuotaRefreshInterval(rawValue: preferences.integer(forKey: "quotaRefreshInterval"))
+        ?? .fiveMinutes
     onboardingComplete = preferences.bool(forKey: "onboardingComplete")
     let storageDirectory = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(
       "Library/Application Support/LimitRoom", isDirectory: true)
@@ -129,7 +134,7 @@ final class AppModel {
         do { try await Task.sleep(for: .seconds(30)) } catch { break }
         guard let self else { break }
         self.displayDate = .now
-        if Date.now.timeIntervalSince(self.lastRefresh) >= 300 { await self.refresh() }
+        await self.refreshIfDue()
       }
     }
     wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -137,6 +142,21 @@ final class AppModel {
     ) { [weak self] _ in
       Task { @MainActor in await self?.refresh() }
     }
+  }
+
+  func setQuotaRefreshInterval(_ interval: QuotaRefreshInterval) {
+    guard interval != quotaRefreshInterval else { return }
+    quotaRefreshInterval = interval
+    guard !isDemo else { return }
+    defaults.set(interval.rawValue, forKey: "quotaRefreshInterval")
+    // A shorter interval can already be due. Use the same guarded refresh path;
+    // changing preferences never cancels an in-flight reading or adds a timer.
+    Task { [weak self] in await self?.refreshIfDue() }
+  }
+
+  private func refreshIfDue() async {
+    guard Date.now.timeIntervalSince(lastRefresh) >= quotaRefreshInterval.duration else { return }
+    await refresh()
   }
 
   var pinned: (AgentSnapshot, AllowanceWindow)? {
@@ -222,13 +242,11 @@ final class AppModel {
       errorMessage = localized(
         "Не удалось сохранить последние показания.", "Could not cache the latest readings.")
     }
-    publishWidget()
   }
 
   func pin(agent: AgentID, window: AllowanceWindow) {
     selection = WindowSelection(agent: agent, windowID: window.id)
     if !isDemo { defaults.set(try? JSONEncoder().encode(selection), forKey: "pinnedWindow") }
-    publishWidget()
   }
   func setChartWindow(_ id: String, agent: AgentID) {
     chartSelections[agent] = id
@@ -323,7 +341,6 @@ final class AppModel {
     snapshots.removeAll { $0.agent == .cursor }
     snapshots.append(AgentSnapshot(agent: .cursor))
     try? cacheStore.write(snapshots)
-    publishWidget()
   }
 
   private func requestCursorRefresh() async {
@@ -561,21 +578,6 @@ final class AppModel {
       let window = codex.windows.max(by: { ($0.durationMinutes ?? 0) < ($1.durationMinutes ?? 0) })
     {
       pin(agent: .codex, window: window)
-    }
-  }
-  private func publishWidget() {
-    guard !isDemo,
-      let group = Bundle.main.object(forInfoDictionaryKey: "LimitRoomAppGroup") as? String,
-      !group.isEmpty, !group.hasPrefix("."), !group.contains("$("),
-      let container = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)
-    else { return }
-    do {
-      try WidgetSnapshotStore(container: container).write(
-        WidgetSnapshot(snapshots: snapshots, pinned: selection))
-      WidgetCenter.shared.reloadAllTimelines()
-    } catch {
-      errorMessage = localized(
-        "Не удалось обновить данные виджета.", "Could not update widget data.")
     }
   }
   private func notifyThresholds(generation: Int) async {

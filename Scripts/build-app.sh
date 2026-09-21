@@ -12,8 +12,7 @@ xcodebuild -project "$limitroom_root/LimitRoom.xcodeproj" -scheme LimitRoom \
   -configuration "$limitroom_configuration" -destination 'generic/platform=macOS' \
   -derivedDataPath "$limitroom_build/DerivedData" CODE_SIGNING_ALLOWED=NO ENABLE_DEBUG_DYLIB=NO build -quiet
 
-# The local app intentionally excludes the extension: signing and the shared
-# container must be configured in Xcode before a widget can be installed reliably.
+# Package the app and its helper without modifying any installed copy.
 if [[ -e "$limitroom_app" && ! -f "$limitroom_app/Contents/Resources/LimitRoom-local-build" && ! -f "$limitroom_app/Contents/LimitRoom-local-build" ]]; then
   echo "Refusing to overwrite an app not created by this script: $limitroom_app" >&2
   exit 1
@@ -30,7 +29,6 @@ cp "$limitroom_products/limitroom-claude-bridge" "$limitroom_app/Contents/Helper
 cp "$limitroom_products/LimitRoom.app/Contents/Info.plist" "$limitroom_app/Contents/Info.plist"
 cp "$limitroom_products/LimitRoom.app/Contents/Resources/LimitRoom.icns" "$limitroom_app/Contents/Resources/LimitRoom.icns"
 cp "$limitroom_root/Resources/Sparkle-LICENSE.txt" "$limitroom_app/Contents/Resources/Sparkle-LICENSE.txt"
-/usr/libexec/PlistBuddy -c 'Set :LimitRoomAppGroup ' "$limitroom_app/Contents/Info.plist"
 /usr/bin/codesign --force --sign - "$limitroom_app/Contents/Helpers/limitroom-claude-bridge"
 # Xcode strips development headers from the embedded framework; seal that
 # container again. Its nested vendor-signed helpers are preserved unchanged.

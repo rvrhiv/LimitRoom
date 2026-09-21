@@ -10,7 +10,7 @@ limitroom_plist="$limitroom_app/Contents/Info.plist"
 limitroom_output="$limitroom_root/build/releases/$limitroom_version"
 
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$limitroom_plist")" == com.rvrhiv.LimitRoom ]]
-for limitroom_info in "$limitroom_plist" "$limitroom_root/Config/App-Info.plist" "$limitroom_root/Config/Widget-Info.plist"; do
+for limitroom_info in "$limitroom_plist" "$limitroom_root/Config/App-Info.plist"; do
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$limitroom_info")" == "$limitroom_version" ]]
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$limitroom_info")" == "$limitroom_number" ]]
 done

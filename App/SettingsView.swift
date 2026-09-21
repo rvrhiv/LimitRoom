@@ -27,6 +27,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
   @Bindable var model: AppModel
+  @Environment(\.colorScheme) private var scheme
   @State private var loginEnabled = PlatformSettings.loginStatus == .enabled
 
   var body: some View {
@@ -49,12 +50,12 @@ struct SettingsView: View {
               .padding(.horizontal, 10).padding(.vertical, 10)
               .contentShape(Rectangle())
           }
-          .buttonStyle(DashboardTabButtonStyle(isSelected: model.settingsPage == page))
+          .buttonStyle(
+            DashboardTabButtonStyle(isSelected: model.settingsPage == page, usesAccent: true)
+          )
           .accessibilityAddTraits(model.settingsPage == page ? .isSelected : [])
         }
         Spacer()
-        Text(localized("Оформление сохраняется сразу", "Appearance saves automatically"))
-          .font(.caption2).foregroundStyle(.secondary).padding(10)
       }.padding(.horizontal, 10).frame(width: 176).background(.regularMaterial)
       Divider()
       VStack(alignment: .leading, spacing: 8) {
@@ -69,6 +70,8 @@ struct SettingsView: View {
     }
     .frame(minWidth: 800, minHeight: 640)
     .background(Color(nsColor: .windowBackgroundColor))
+    .tint(presentationAccent(scheme))
+    .accentColor(presentationAccent(scheme))
     .onAppear { loginEnabled = PlatformSettings.loginStatus == .enabled }
   }
 
@@ -124,22 +127,24 @@ struct SettingsView: View {
           LabeledContent(
             localized("Язык и оформление", "Language and appearance"),
             value: localized("Как в macOS", "Follow macOS"))
-          LabeledContent(
-            localized("Обновление показаний", "Allowance refresh"),
-            value: localized("Каждые 5 минут", "Every 5 minutes"))
+          Picker(
+            localized("Интервал обновления квот", "Allowance refresh interval"),
+            selection: Binding(
+              get: { model.quotaRefreshInterval }, set: { model.setQuotaRefreshInterval($0) })
+          ) {
+            ForEach(QuotaRefreshInterval.allCases) { Text($0.title).tag($0) }
+          }
+          Text(
+            localized(
+              "Интервал для всех агентов. После пробуждения Mac показания обновляются сразу; вручную — через меню действий панели.",
+              "Applies to all agents. Readings refresh on wake; use the panel's actions menu to refresh manually."
+            )
+          )
+          .font(.callout).foregroundStyle(.secondary)
           Text(
             localized(
               "История хранится только на этом Mac. Пароли и токены не попадают в историю.",
               "History stays on this Mac. Passwords and tokens are not stored in history.")
-          )
-          .font(.callout).foregroundStyle(.secondary)
-        }
-        Section(localized("Виджет macOS", "macOS widget")) {
-          Text(
-            localized(
-              "Для установки виджета нужна подписанная сборка с App Group. В локальной сборке виджет не установлен.",
-              "Installing the widget requires a signed build with an App Group. The local build does not install the widget."
-            )
           )
           .font(.callout).foregroundStyle(.secondary)
         }

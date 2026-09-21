@@ -69,6 +69,11 @@ struct DashboardView: View {
           }
         }.padding(.horizontal, contentInset).padding(.bottom, 8)
       }.scrollIndicators(.hidden).frame(maxWidth: .infinity, maxHeight: .infinity)
+      AppUpdateButton(updates: model.updates) {
+        model.settingsPage = .updates
+        showSettings()
+      }
+      .padding(.horizontal, contentInset)
       footer
     }
     .padding(.top, style == .notch ? 12 : 6)
@@ -192,10 +197,6 @@ struct DashboardView: View {
         width: 5, height: 5)
       Text(footerLabel).lineLimit(1)
       Spacer(minLength: 6)
-      CompactUpdateButton(updates: model.updates) {
-        model.settingsPage = .updates
-        showSettings()
-      }
       Text(AppIdentity.versionLabel).monospacedDigit().help(AppIdentity.versionDescription)
         .accessibilityLabel(AppIdentity.versionDescription)
     }.font(.system(size: 9)).foregroundStyle(.secondary).padding(.horizontal, contentInset).frame(
@@ -242,15 +243,22 @@ struct DashboardView: View {
 
 struct DashboardTabButtonStyle: ButtonStyle {
   var isSelected: Bool
+  var usesAccent = false
   @State private var isHovered = false
+  @Environment(\.colorScheme) private var scheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
-      .foregroundStyle(isSelected || isHovered ? .primary : .secondary)
+      .foregroundStyle(
+        isSelected && usesAccent
+          ? presentationAccent(scheme) : isSelected || isHovered ? Color.primary : Color.secondary
+      )
       .background(
-        Color.primary.opacity(
-          configuration.isPressed ? 0.15 : isHovered ? 0.11 : isSelected ? 0.07 : 0),
+        (isSelected && usesAccent ? presentationAccent(scheme) : Color.primary).opacity(
+          configuration.isPressed
+            ? (usesAccent ? 0.23 : 0.15)
+            : isHovered ? (usesAccent ? 0.15 : 0.11) : isSelected ? (usesAccent ? 0.12 : 0.07) : 0),
         in: RoundedRectangle(cornerRadius: 6)
       )
       .contentShape(Rectangle())

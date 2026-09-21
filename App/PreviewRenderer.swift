@@ -126,7 +126,9 @@ enum PreviewRenderer {
     default:
       fail("Unknown preview surface: \(surface).")
     }
-    let hosting = NSHostingView(rootView: content)
+    // Offscreen windows are inactive; render native controls as they appear
+    // while the user is interacting with the settings window.
+    let hosting = NSHostingView(rootView: content.environment(\.controlActiveState, .active))
     let frame = CGRect(origin: .zero, size: size)
     let window = NSWindow(
       contentRect: frame, styleMask: .borderless, backing: .buffered, defer: false)

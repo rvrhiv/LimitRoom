@@ -3,11 +3,11 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version already committed in both Info.plist files (e.g. 0.5.0)'
+        description: 'Version already committed in Config/App-Info.plist (e.g. 0.5.1)'
         required: true
         type: string
       build:
-        description: 'Increasing CFBundleVersion already committed (e.g. 6)'
+        description: 'Increasing CFBundleVersion already committed (e.g. 7)'
         required: true
         type: string
 permissions:
@@ -33,7 +33,7 @@ jobs:
           RELEASE_BUILD: ${{ inputs.build }}
         run: |
           swift build
-          swift format lint --strict --recursive Package.swift App Sources Widgets Scripts/generate-icon.swift
+          swift format lint --strict --recursive Package.swift App Sources Scripts/generate-icon.swift
           bash Scripts/build-app.sh Release
           bash Scripts/package-release.sh "$RELEASE_VERSION" "$RELEASE_BUILD"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -1,5 +1,23 @@
 # Проверка LimitRoom
 
+## Settings and update-action polish 0.5.1 (7) — 2026-09-22
+
+Prepared for a user-triggered release, not published by this increment. Local artifacts: `build/LimitRoom.app` and the unsigned update archive `build/releases/0.5.1/LimitRoom-0.5.1.zip`. The installed application, provider credentials and Application Support data were not changed.
+
+Confirmed locally:
+
+- Full SwiftPM and universal Xcode Release builds pass. Main, Claude helper and Sparkle contain `x86_64 arm64`; deep/strict app signature verification passes. Packaging validates version 0.5.1, build 7 and the unchanged update public key/feed.
+- Xcode has exactly two native targets: LimitRoom and ClaudeBridge. Obsolete extension sources, model/storage projection, publishing calls, configuration and documentation were removed. Historical local data was not deleted; local display snapshot files remain ignored by pattern.
+- Strict Swift format, plist/project validation, Bash syntax, actionlint 1.7.12 and Git whitespace checks pass. Targeted tracked-source searches found no recognized credential values or personal checkout paths; this is not an exhaustive secret detector.
+- Own-view DEMO renders cover RU/dark and EN/light settings, the general interval selector, and prominent app-update available/downloading/failed states. Available updates use a version-labelled full-width action above the footer, independent of inactive AppKit button tint. Failed-state text stays readable against its orange background. Footer version and quota refresh action remain separate.
+- Settings inherit the shared light/dark tint and accent; the selected sidebar section is explicitly accented. Offscreen renders cannot establish native active-window checkbox/slider behavior, keyboard focus or physical hover/click handling.
+- Source tracing confirms four allowed polling intervals with a five-minute fallback, persisted outside demo. The existing single display loop checks the selected interval; a due shorter choice uses the same guarded refresh path. Manual/wake refresh and in-flight reads are preserved. Native selection/persistence across relaunch and elapsed-time collection were not exercised against real providers.
+- Opening Settings calls the notch controller's existing `close()` before activating the settings window. That path clears the pin and collapses to the compact frame; native pointer/animation interaction remains a manual acceptance item.
+
+No new tests or assertion harnesses were added because no assigned test-case IDs are available. Builds, source tracing and synthetic rendering are not automated regression coverage. Real update replacement/relaunch and first-install Gatekeeper behavior remain separate checks. [Manual release instructions](releasing.md#ready-to-run-051-release) specify Actions → Release, `main`, version `0.5.1`, build `7`; no tag or release needs to be created beforehand.
+
+Fresh read-only review found no Critical or Important issues and two Minor documentation issues. Both were corrected: an old ledger sentence again states that installed-app behavior needs manual acceptance, and an orphan extension reference was removed. Post-review changes are documentation-only; native interaction, timed polling and complete update installation are not newly claimed as verified.
+
 ## Settings and signed releases 0.5.0 (6) — 2026-09-21
 
 Local artifacts: `build/LimitRoom.app` and `build/releases/0.5.0/LimitRoom-0.5.0.zip`. The installed app, live agent credentials and provider settings were not changed. The local checks below preceded publication; hosted publication evidence is recorded separately below.
@@ -21,7 +39,7 @@ Acceptance still needed:
 
 - Physical notch movement, rapid direction changes, Spaces, camera alignment, haptics, full-area hit testing and VoiceOver.
 - A real signed update from an older installed app through replacement/relaunch, including cancellation, subsequent background failures and first-install Gatekeeper behavior. Version 0.4.1 has no updater and needs one manual installation of 0.5.0.
-- Previously documented live Claude/Cursor and installed-widget acceptance remains open. Provider credentials were not accessed for release validation.
+- Previously documented live Claude/Cursor acceptance remains open. Provider credentials were not accessed for release validation.
 
 No new tests or assertion harnesses were created: assigned test-case IDs are absent. Compilation, source tracing and own-view rendering are not automated regression coverage. No second reviewer was dispatched after the single fix pass.
 
@@ -42,7 +60,7 @@ Local artifact: `build/LimitRoom.app`. Changes start at `f72f170`. Installed app
 
 Confirmed:
 
-- SwiftPM build and universal Xcode Release succeeded. Main/helper: `x86_64 arm64`. Deep/strict ad-hoc signature verification passes; bundle reports 0.4.1 (5). Swift-format, both plist files, Xcode project, shell syntax and whitespace checks pass. This is not notarization or installed-widget acceptance.
+- SwiftPM build and universal Xcode Release succeeded. Main/helper: `x86_64 arm64`. Deep/strict ad-hoc signature verification passes; bundle reports 0.4.1 (5). Swift-format, both plist files, Xcode project, shell syntax and whitespace checks pass. This is not notarization.
 - A temporary DEMO-only probe inspected the real NSStatusBarButton, not a normal offscreen SwiftUI label. Before: `title=DEMO`, `image=nil`, frame 59×22. After: empty native title, complete template image 93.5×18, button 110×22. Own-button PNGs were inspected; the after image contains the agent icon, full circular gauge and percentage. Diagnostic code was then removed. Settings preview uses this same generated image.
 - A native invisible NSPanel probe reproduced the layering defect: setting level 26 then `isFloatingPanel=true` changes the actual level to 3. Corrected order leaves level 26; live WindowServer status-item layers on this Mac are 25. The supplied user screenshot shows Zoom's icon overlapping the old 0.4.0 panel. No unsupported/private API or screen-saver-level window is used.
 - Ordinary Space and screen-parameter notifications no longer unconditionally hide and reset the notch. Reconciliation retains an unchanged stationary panel; fullscreen/sleep/session/unavailable-display policies remain. This removes the source-level 250 ms hide/show gap; an actual animated Space transition is still a hardware acceptance item.
@@ -53,7 +71,7 @@ Acceptance still needed:
 
 - Hover/click across whole disclosure bounds, keyboard/VoiceOver, physical haptic strength, Zoom overlap in the new installed build and rapid Control+Arrow/Spaces/fullscreen transitions. The native diagnostics prove label transport and the level reset, not every desktop interaction.
 - User-confirmed Cursor.app connection, actual personal usage/plan/reset versus Cursor dashboard, account switch/expiry/offline/disconnect. The development run did not read the real access token or enable this setting. Private Cursor storage/endpoints may change.
-- Previous Claude setup, widget/App Group, notarization and release-channel gaps remain outside this increment. The Claude setup error visible in the supplied screenshot was not independently diagnosed by this task.
+- Previous Claude setup, notarization and release-channel gaps remain outside this increment. The Claude setup error visible in the supplied screenshot was not independently diagnosed by this task.
 
 No new tests: no assigned test-case ID exists. Compilation, native diagnostic output, visual inspection and code review do not replace regression coverage. Existing preview renderer adds `--surface connections` for the real SettingsView; it requires DEMO and never invokes authentication.
 
@@ -70,8 +88,8 @@ Local artifact: `build/LimitRoom.app`. The installed app, actual Claude settings
 
 Confirmed in this increment:
 
-- Full SwiftPM build and universal Xcode Release succeed. Main executable and helper each contain `x86_64 arm64`; deep/strict ad-hoc signature verification passes. Bundle reports 0.4.0. No installed widget or notarization claim.
-- Swift format lint across Package/App/Sources/Widgets/icon script, both Info.plists/Xcode project lint, packaging shell syntax and git whitespace checks pass.
+- Full SwiftPM build and universal Xcode Release succeed. Main executable and helper each contain `x86_64 arm64`; deep/strict ad-hoc signature verification passes. Bundle reports 0.4.0. No notarization claim.
+- Swift format lint across Package/App/Sources/icon script, both Info.plists/Xcode project lint, packaging shell syntax and git whitespace checks pass.
 - Actual Release own-view images inspected: expanded black notch/RU, menu/light/EN, settings/dark/RU, 56/88/120/160 pt wings, independent icon/ring/percentage, ring-only, one hidden wing and exact reset date. No wrap/overlap in these samples; all visible synthetic wings retain DEMO markers. At 56 pt all three components become very small; hiding components or using the default 88 pt improves legibility.
 - Native silhouette uses outward circular upper shoulders, no native shadow/outline and an explicit opaque sRGB black fill. Dashboard padding is larger; status panel level is `statusBar + 1`, below pop-up menus. Cursor behavior is implemented but not validated by offscreen rendering.
 - Claude setup/helper compile through both packaging paths. Source includes strict JSON/regular-file checks, private backups, compare-before-replace, an installer lock, a recoverable receipt, immutable scope-bound helper copies and previous-command forwarding. Real user configuration was not written to exercise this code.
@@ -90,7 +108,7 @@ Fresh read-only review of `89247a8..a4750fc` found no Critical and three Importa
 - Serialized settings are size-checked before the receipt/settings commit, falling back to compact JSON when indentation exceeds 4 MiB. The compare check runs after staging, immediately before rename.
 - Disconnect invalidates the old producer scope before restoring settings. Scope-independent ownership keeps recovery/removal available after a partial failure and restart. The persisted scope marker takes priority over potentially unflushed UserDefaults, preventing a restart from resurrecting an invalidated producer.
 
-Post-fix full SwiftPM, universal Release, signature, formatting and plist checks were rerun. No new RED/GREEN tests were permitted without IDs, and no second reviewer was dispatched. There are no newly deferred Minor findings. The unchanged native-screen/live-Claude/widget/distribution acceptance boundaries above are deliberate; their cost is possible environment-specific follow-up before any public release.
+Post-fix full SwiftPM, universal Release, signature, formatting and plist checks were rerun. No new RED/GREEN tests were permitted without IDs, and no second reviewer was dispatched. There are no newly deferred Minor findings. The unchanged native-screen/live-Claude/distribution acceptance boundaries above are deliberate; their cost is possible environment-specific follow-up before any public release.
 
 Images are in `build/v040-*.png`; the existing developer renderer now accepts `--left-components`, `--right-components`, `--menu-components` (comma-separated `icon,ring,percentage`, or `none`) and side widths 56...160. Default width is 88; the normal slider spans 56...120, preserving larger legacy values until changed.
 
@@ -100,12 +118,12 @@ Images are in `build/v040-*.png`; the existing developer renderer now accepts `-
 
 Подтверждено:
 
-- SwiftPM собирает все продукты; Xcode Release собрал app/helper/widget target. Локальная упаковка по-прежнему исключает неподготовленный widget.
+- SwiftPM собирает все продукты; Xcode Release собрал app/helper targets.
 - Главный бинарник и helper содержат `x86_64 arm64`. `codesign --verify --deep --strict build/LimitRoom.app` проходит; Bundle — `0.3.0 (3)`. Это локальная ad-hoc подпись, не notarization и не проверка на Intel.
-- `swift format lint --recursive Package.swift App Sources Widgets Scripts/generate-icon.swift`, `bash -n Scripts/build-app.sh`, `plutil -lint` обоих plist и Xcode project проходят.
+- `swift format lint --recursive Package.swift App Sources Scripts/generate-icon.swift`, `bash -n Scripts/build-app.sh`, `plutil -lint` обоих plist и Xcode project проходят.
 - Из Release получены и осмотрены собственные demo-рендеры: светлый menu/EN, настройки menu/RU, все display controls/RU, компактная/раскрытая чёлка/RU, точная дата при ширине стороны 80 pt, переставленные стороны при ширине 160 pt/EN, скрытый сброс и асимметричная сторона без процента. Камера встроена в единую шапку; отдельной подложки сверху в рендере нет.
 - На первом рендере минимальной ширины процент переносился на вторую строку, а Slider дублировал подпись. Исправления проверены повторным Release-рендером: процент в одну строку, подпись ширины одна. Это визуальная проверка существующего renderer, не новый автотест.
-- Source review: локальный и глобальный mouse monitors живут только пока панель видима; Escape остаётся локальным. Квоты, SQLite, авторизация и WidgetSnapshot не менялись. Никаких новых Accessibility/Screen Recording разрешений.
+- Source review: локальный и глобальный mouse monitors живут только пока панель видима; Escape остаётся локальным. Квоты, SQLite и авторизация не менялись. Никаких новых Accessibility/Screen Recording разрешений.
 - Короткая подпись окна теперь использует исходное название, а не только длительность. Ранее отложенное совпадение подписей Cursor-окон с одинаковой длительностью устранено в рамках настройки содержимого сторон.
 
 Что ещё проверить руками на Mac:
@@ -128,7 +146,7 @@ Images are in `build/v040-*.png`; the existing developer renderer now accepts `-
 
 - Hover/focus над физической камерой, native Picker, ощущение haptic и быстрые движения — ручная приёмка; возможны аппаратно-зависимые доработки.
 - Spaces/fullscreen/Stage Manager, дисплеи/крышка и accessibility traversal — ручная приёмка; возможны системные проблемы видимости/навигации.
-- Реальные источники, история, установленный виджет, notarization и распространение вне этого UI-инкремента; локальная сборка не является подтверждённым публичным релизом.
+- Реальные источники, история, notarization и распространение вне этого UI-инкремента; локальная сборка не является подтверждённым публичным релизом.
 
 Повторить новые варианты (только синтетические данные):
 
@@ -146,13 +164,13 @@ build/LimitRoom.app/Contents/MacOS/LimitRoom --demo --render-preview build/v030-
 
 Подтверждено:
 
-- Xcode Release собрал app, helper и widget target. Локальный пакет включает app/helper/иконку и намеренно не устанавливает неподписанный widget.
+- Xcode Release собрал app и helper targets. Локальный пакет включает app/helper/иконку.
 - `lipo -archs` приложения: `x86_64 arm64`; `codesign --verify --deep --strict` проходит. Это ad-hoc подпись, не Developer ID/notarization и не проверка исполнения на Intel.
-- Bundle содержит иконку «Запас», версию `0.2.0`, build `2`, deployment target `14.0`. Версия widget target также обновлена до `0.2.0 (2)`, чтобы соответствовать содержащему приложению.
-- `swift format lint --recursive Package.swift App Sources Widgets Scripts/generate-icon.swift` без предупреждений; `bash -n` скрипта упаковки и `plutil -lint` обоих Info.plist/проекта проходят.
+- Bundle содержит иконку «Запас», версию `0.2.0`, build `2`, deployment target `14.0`.
+- `swift format lint --recursive Package.swift App Sources Scripts/generate-icon.swift` без предупреждений; `bash -n` скрипта упаковки и `plutil -lint` обоих Info.plist/проекта проходят.
 - Рендеры собственных SwiftUI views успешно записаны из Release-бинарника: menu bar light/EN и dark/RU, раскрытый notch/RU, компактный notch с процентом и без, индикатор, статистика/EN и настройки/RU. Визуально проверены единые карточки, выбранное окно, русские/английские подписи, версия, отсутствие разрыва между синтетической камерой и контуром, полукольцо и значок агента при выключенных цифрах.
 - Статистика использует существующие `model.rates` и независимый выбор окон; легенда связывает цвета с агентами. Отсутствующие/устаревшие данные и сохранение WindowID проверены чтением кода, не имитацией личных данных.
-- SwiftPM собирает все продукты. App/helper/widget target содержат обе архитектуры; в локальном `.app` ровно app, helper, иконка, Info.plist и служебные ресурсы подписи/упаковки.
+- SwiftPM собирает все продукты. App/helper targets содержат обе архитектуры; в локальном `.app` ровно app, helper, иконка, Info.plist и служебные ресурсы подписи/упаковки.
 - Read-only диагностика NSScreen на текущем Mac: встроенный экран `1728×1117`, safe-area top `32`, auxiliary widths `771/772`, вычисленная ширина камеры `185` pt. Внешний экран имеет safe-area top `0` и исключается. Это сверка метаданных, не проверка взаимодействия.
 
 Первый sandboxed Xcode-вызов остановился на запрете записи системного package cache и доступа к build-сервисам. Тот же локальный build с разрешённым доступом завершился успешно; обход в код приложения не добавлялся. Сборки SwiftPM используют task-specific module caches в `/private/tmp`.
@@ -191,10 +209,10 @@ build/LimitRoom.app/Contents/MacOS/LimitRoom --demo --render-preview build/nativ
 | Область | Результат и граница доказательства |
 | --- | --- |
 | SwiftPM | `swift build`: приложение, helper и все четыре модуля собираются. Новых test targets нет. |
-| Форматирование | `swift format lint --recursive Package.swift App Sources Widgets` завершился без предупреждений. `bash -n Scripts/build-app.sh` прошёл. |
-| Xcode | Debug и Release, `-destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO`: app + WidgetKit extension + helper собраны. |
-| Universal | `lipo -archs`: `x86_64 arm64` у app, helper и extension. Это не проверка исполнения на Intel. |
-| Локальная упаковка | `bash Scripts/build-app.sh Release`: создаётся `build/LimitRoom.app`, без неподписанного виджета. `codesign --verify --deep --strict` подтверждает ad-hoc подпись. Не Developer ID/notarization. |
+| Форматирование | `swift format lint --recursive Package.swift App Sources` завершился без предупреждений. `bash -n Scripts/build-app.sh` прошёл. |
+| Xcode | Debug и Release, `-destination 'generic/platform=macOS' CODE_SIGNING_ALLOWED=NO`: app + helper собраны. |
+| Universal | `lipo -archs`: `x86_64 arm64` у app и helper. Это не проверка исполнения на Intel. |
+| Локальная упаковка | `bash Scripts/build-app.sh Release`: создаётся `build/LimitRoom.app`. `codesign --verify --deep --strict` подтверждает ad-hoc подпись. Не Developer ID/notarization. |
 | Запуск | Обычный процесс LimitRoom запущен. На отдельном замере после старта: 0.0% CPU, RSS 72 496 KiB. Это точечный замер, не performance benchmark. |
 | Codex | Найден `/Applications/ChatGPT.app/Contents/Resources/codex`, версия 0.153.4. Официальные RPC вернули ChatGPT account и окно 10080 минут с числовым процентом и reset. Секреты и email в диагностический вывод не включались. |
 | App → Codex → Storage | Кэш самого приложения: Codex `ready`, одно окно; в SQLite появилась реальная запись `codex`. Личные проценты не сохранены в репозитории. |
@@ -214,7 +232,6 @@ build/LimitRoom.app/Contents/MacOS/LimitRoom --demo --render-preview build/nativ
 - Live Claude: установка statusLine пользователем, реальные события/сбросы/несколько терминалов. Защита от replay проверена чтением кода, не автоматическими сценариями.
 - Live Cursor: успешный WebKit/SSO-вход, соответствие dashboard фактическим цифрам личной подписки. Endpoint и схема приватные, поддержка экспериментальная.
 - Сверка отображаемого процента Codex с его UI, реальные исчерпания/сбросы и смена подписки. Транспорт, схема и запись из самого приложения подтверждены отдельно.
-- Установленный WidgetKit extension, общий контейнер, deep link из Notification Center и refresh budget. Требуются реальные signing/App Group настройки.
 - Autostart после перезагрузки, системные permission dialogs уведомлений, VoiceOver traversal, sleep/wake, длительный офлайн и восстановление. Не включались за пользователя.
 - UI-действия экспорта/очистки на реальной истории. CSV/JSON allowlist и formula escaping проверены по коду; исторические данные для таких проверок не подменялись.
 - Прогноз в интерфейсе, отдельная линия остатка/reset, адаптивный backoff/Retry-After, installer/chaining существующей Claude statusLine — следующие инкременты.
@@ -234,7 +251,6 @@ bash Scripts/build-app.sh Release
 codesign --verify --deep --strict build/LimitRoom.app
 lipo -archs build/LimitRoom.app/Contents/MacOS/LimitRoom
 lipo -archs build/LimitRoom.app/Contents/Helpers/limitroom-claude-bridge
-lipo -archs build/DerivedData/Build/Products/Release/LimitRoomWidgets.appex/Contents/MacOS/LimitRoomWidgets
 ```
 
 PNG-предпросмотр генерируется только с `--demo`. Завершите работающий экземпляр через `… → Завершить LimitRoom` перед обычным повторным запуском, чтобы не держать два сборщика.

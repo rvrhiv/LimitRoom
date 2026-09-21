@@ -4,7 +4,7 @@
 
 Show **one selected quota**, not two independent quotas. The user's answer on 2026-09-21 closes this choice. Their earlier instruction to save documents and implement without additional approval gates still applies. Work locally in the existing feature checkout; do not install, push or publish.
 
-Keep the approved cards, icon A, dark notch appearance, temporary pin and version footer. Do not change collectors, account access, SQLite, chart selection or widget data.
+Keep the approved cards, icon A, dark notch appearance, temporary pin and version footer. Do not change collectors, account access, SQLite or chart selection.
 
 ## Interaction contract
 

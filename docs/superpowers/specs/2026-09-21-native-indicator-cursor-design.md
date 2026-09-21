@@ -36,7 +36,7 @@ The ephemeral HTTPS client sends the derived session only to fixed `https://curs
 
 Project usage through CursorProjection. Use only `individualUsage`, never team totals. Preserve Cursor Models / Other Models / Total identifiers; derive Total only from an explicit positive plan limit when no total percentage exists. A separately labelled personal spending cap may use `individualUsage.overall` when present and enabled; do not relabel it as included quota. Missing is not zero or unlimited. Stable account scope remains server-derived and account histories stay separate.
 
-Disconnect disables reads immediately, invalidates pending results, clears current Cursor cache/widget state, retains history and leaves Cursor.app signed in. Reconnecting or selecting the web source explicitly invalidates the other reader, including its status-message callback, not just its quota result.
+Disconnect disables reads immediately, invalidates pending results, clears current Cursor cached state, retains history and leaves Cursor.app signed in. Reconnecting or selecting the web source explicitly invalidates the other reader, including its status-message callback, not just its quota result.
 
 ## Verification and limitations
 

@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct UpdateSettingsView: View {
@@ -69,30 +70,86 @@ struct UpdateSettingsView: View {
   }
 }
 
-struct CompactUpdateButton: View {
+struct AppUpdateButton: View {
   var updates: UpdateController
   var openSettings: () -> Void
+  @Environment(\.colorScheme) private var scheme
+
   var body: some View {
     if updates.phase == .available || updates.isBusy || updates.phase == .failed {
       Button {
         if updates.canInstall { updates.install() } else { openSettings() }
       } label: {
-        HStack(spacing: 4) {
+        HStack(spacing: 8) {
           Image(
             systemName: updates.phase == .failed
               ? "exclamationmark.arrow.triangle.2.circlepath" : "arrow.down.circle.fill")
-          if let progress = updates.progress {
-            Text(progress, format: .percent.precision(.fractionLength(0)))
-          } else if updates.phase == .available {
-            Text(localized("Обновить", "Update"))
+          Text(title).lineLimit(1)
+          Spacer(minLength: 0)
+          if updates.isBusy, let progress = updates.progress {
+            Text(progress, format: .percent.precision(.fractionLength(0))).monospacedDigit()
+          } else {
+            Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
           }
-        }.padding(.horizontal, 6).padding(.vertical, 4).contentShape(Rectangle())
+        }
+        .font(.system(size: 12, weight: .semibold))
+        .padding(.horizontal, 6).padding(.vertical, 6)
+        .frame(maxWidth: .infinity).contentShape(Rectangle())
       }
-      .buttonStyle(.plain)
-      .foregroundStyle(updates.phase == .failed ? Color.orange : Color.accentColor)
-      .background(Color.accentColor.opacity(0.12), in: Capsule())
+      .buttonStyle(
+        AppUpdateButtonStyle(
+          color: updates.phase == .failed ? .orange : presentationAccent(scheme),
+          foreground: updates.phase == .failed || scheme == .dark ? .black : .white)
+      )
       .help(updates.status + (updates.availableVersion.map { " · " + $0 } ?? ""))
-      .accessibilityLabel(updates.status)
+      .accessibilityLabel(title)
+      .accessibilityValue(
+        updates.progress?.formatted(.percent.precision(.fractionLength(0))) ?? ""
+      )
+      .accessibilityHint(
+        updates.canInstall
+          ? localized(
+            "Установить обновление и перезапустить LimitRoom", "Install and relaunch LimitRoom")
+          : localized("Открыть настройки обновлений", "Open update settings")
+      )
+      .padding(.top, 6).padding(.bottom, 4)
     }
+  }
+
+  private var title: String {
+    if updates.phase == .available {
+      return localized("Обновить LimitRoom", "Update LimitRoom")
+        + (updates.availableVersion.map { " · v" + $0 } ?? "")
+    }
+    return updates.status
+  }
+}
+
+/// The notch is intentionally non-activating. Keep its update action distinct
+/// even when AppKit would draw an inactive prominent button in gray.
+private struct AppUpdateButtonStyle: ButtonStyle {
+  var color: Color
+  var foreground: Color
+  @State private var isHovered = false
+  @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+  func makeBody(configuration: Configuration) -> some View {
+    configuration.label
+      .padding(.horizontal, 6).padding(.vertical, 4)
+      .foregroundStyle(foreground)
+      .background(
+        color.opacity(configuration.isPressed ? 0.72 : isHovered ? 0.88 : 1),
+        in: RoundedRectangle(cornerRadius: 8)
+      )
+      .contentShape(RoundedRectangle(cornerRadius: 8))
+      .onHover { isHovered = $0 }
+      .onContinuousHover { phase in
+        switch phase {
+        case .active: NSCursor.pointingHand.set()
+        case .ended: NSCursor.arrow.set()
+        }
+      }
+      .onDisappear { if isHovered { NSCursor.arrow.set() } }
+      .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isHovered)
   }
 }

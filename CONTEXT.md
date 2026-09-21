@@ -29,7 +29,7 @@ A timestamped value reported by a Connector for one Allowance Window, including 
 _Avoid_: estimate, balance
 
 **Pinned Window**:
-The Allowance Window selected by the user for the Compact Indicator in either Presentation Mode and for the compact widget; its latest Reading changes without changing the selection. Browsing another Agent Card does not change this selection.
+The Allowance Window selected by the user for the Compact Indicator in either Presentation Mode; its latest Reading changes without changing the selection. Browsing another Agent Card does not change this selection.
 _Avoid_: primary quota, default limit, pinned panel
 
 **Reading State**:

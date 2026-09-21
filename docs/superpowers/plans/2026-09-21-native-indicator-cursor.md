@@ -54,12 +54,12 @@
 
 ### Task 3: Package and review
 
-**Files:** `Config/App-Info.plist`, `Config/Widget-Info.plist`, `README.md`, `docs/architecture.md`, `docs/adr/0001-local-first-allowance-readings.md`, `docs/verification.md`, `docs/implementation-progress.md`.
+**Files:** `Config/App-Info.plist`, `README.md`, `docs/architecture.md`, `docs/adr/0001-local-first-allowance-readings.md`, `docs/verification.md`, `docs/implementation-progress.md`.
 
 **Interfaces:** Existing `Scripts/build-app.sh Release` generates `build/LimitRoom.app`, universal main/helper and ad-hoc signature.
 
 - [x] Set version 0.4.1 (5); document changes, local-auth consent and manual verification gaps.
-- [x] Run `swift format lint --recursive Package.swift App Sources Widgets Scripts/generate-icon.swift`, `plutil -lint Config/App-Info.plist Config/Widget-Info.plist LimitRoom.xcodeproj/project.pbxproj`, `bash -n Scripts/build-app.sh`. Expected: no errors.
+- [x] Run `swift format lint --recursive Package.swift App Sources Scripts/generate-icon.swift`, `plutil -lint Config/App-Info.plist LimitRoom.xcodeproj/project.pbxproj`, `bash -n Scripts/build-app.sh`. Expected: no errors.
 - [x] Run `bash Scripts/build-app.sh Release`, `codesign --verify --deep --strict build/LimitRoom.app` and `lipo -archs` for main/helper. Expected: successful Release, valid ad-hoc signature, arm64+x86_64.
 - [x] Render menu/notch/settings/native indicator using existing demo preview surfaces in RU/EN; record observations without claiming actual pointer/Spaces or live Cursor success.
 - [x] Commit, obtain one fresh whole-increment review, address important issues and rerun affected checks. No remote action.

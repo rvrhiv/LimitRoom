@@ -4,6 +4,5 @@ SWIFT_STRICT_CONCURRENCY = complete
 ENABLE_USER_SCRIPT_SANDBOXING = YES
 ENABLE_HARDENED_RUNTIME = YES
 CODE_SIGN_STYLE = Automatic
-// Set DEVELOPMENT_TEAM in ignored Local.xcconfig before installing the widget.
-LIMITROOM_APP_GROUP = $(DEVELOPMENT_TEAM).com.rvrhiv.LimitRoom.shared
+// Set DEVELOPMENT_TEAM in ignored Local.xcconfig for a developer-signed build.
 #include? "Local.xcconfig"

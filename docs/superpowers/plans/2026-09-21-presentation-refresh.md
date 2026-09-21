@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - macOS 14+, Swift 6, Universal arm64/x86_64, RU/EN.
-- Codex, Claude Code and Cursor only; no changes to connectors, authorization, storage, analytics or widget snapshot format.
+- Codex, Claude Code and Cursor only; no changes to connectors, authorization, storage or analytics.
 - One AgentID + WindowID selection drives both compact presentations.
 - Menu bar is the default; show percentage and notch haptics default to enabled.
 - No new tests without assigned test-case IDs; none are available. Run builds and manual/render checks instead; do not claim TDD or regression coverage.
@@ -116,7 +116,7 @@
 - Produces: local `build/LimitRoom.app`, own-view light/dark and notch preview images, explicit verification report and no changes in `/Applications`.
 
 - [ ] Extend the existing offscreen demo renderer to select menu/notch compact/notch expanded views; it must render only its own views and terminate. Preview mode must never collect providers or persist preferences.
-- [ ] Run `bash Scripts/build-app.sh Release`. Expected: successful universal app with icon, version 0.2.0 (2), Claude helper and no unconfigured widget installation.
+- [ ] Run `bash Scripts/build-app.sh Release`. Expected: successful universal app with icon, version 0.2.0 (2), Claude helper.
 - [ ] Run `codesign --verify --deep --strict build/LimitRoom.app`, `lipo -archs build/LimitRoom.app/Contents/MacOS/LimitRoom`, and plist/resource checks. Expected: valid ad-hoc signature, arm64 and x86_64, icon resource in the bundle.
 - [ ] Render and visually inspect the native layouts in light/dark, menu/notch and compact/expanded configurations. Record any hardware interactions not exercised; do not claim trackpad or fullscreen validation from images.
 - [ ] Run `git diff --check`, the package build and a fresh whole-change review. Fix important findings within scope, rerun relevant verification; do not add tests without IDs. Record minor deferrals and limitations.

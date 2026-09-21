@@ -2,15 +2,15 @@
 
 > **For agentic workers:** Use superpowers:executing-plans for native execution. The user's no-new-tests-without-assigned-IDs rule overrides generated test steps. No ID is currently assigned.
 
-**Goal:** Produce a buildable native macOS application with truthful source states, quota selection, local history, and reusable widget models.
+**Goal:** Produce a buildable native macOS application with truthful source states, quota selection, local history, and reusable allowance models.
 
-**Architecture:** Xcode app and widget targets consume a local Swift package. Core rules are pure; connectors hide source formats; a single history writer and monitor feed the UI and sanitized widget snapshot.
+**Architecture:** Xcode app and helper targets consume a local Swift package. Core rules are pure; connectors hide source formats; a single history writer and monitor feed the UI.
 
-**Tech Stack:** Swift 6, SwiftUI, AppKit, SQLite3, Charts, WidgetKit, ServiceManagement, WebKit. Sparkle is integrated only after an update channel is configured.
+**Tech Stack:** Swift 6, SwiftUI, AppKit, SQLite3, Charts, ServiceManagement, WebKit. Sparkle is integrated only after an update channel is configured.
 
 **Spec:** `docs/architecture.md`.
 
-**Scope of checked items:** implementation and builds for this foundation, not a certified release. Live-source, OS-permission, accessibility and installed-widget checks remain explicitly separated in `docs/verification.md`.
+**Scope of checked items:** implementation and builds for this foundation, not a certified release. Live-source, OS-permission, accessibility and native-window checks remain explicitly separated in `docs/verification.md`.
 
 ## Global Constraints
 
@@ -26,7 +26,6 @@
 - Missing or stale data must never render as a full or empty live allowance.
 - Reset, account change and gaps must not create false consumption spikes.
 - Duplicate observations must not inflate history or alerts.
-- Widget snapshot must contain no credentials or full history.
 - Demo data must never persist, alert, or masquerade as personal usage.
 
 ### Task 1: Core model and observed trends
@@ -40,15 +39,14 @@
 - [x] Implement comparable-cycle deltas with a 30-minute gap limit, minimum 60-second interval, and explicit percentage-point unit.
 - [x] Run `swift build --target AllowanceCore`; expected: compilation succeeds.
 
-### Task 2: History and widget snapshot storage
+### Task 2: History storage
 
-**Files:** `Sources/CSQLite/*`, `Sources/AllowanceStorage/HistoryStore.swift`, `Sources/AllowanceStorage/WidgetSnapshotStore.swift`.
+**Files:** `Sources/CSQLite/*`, `Sources/AllowanceStorage/HistoryStore.swift`.
 
-**Interfaces:** consumes `AgentSnapshot`; produces `HistoryStore.record(_:now:)`, `samples(since:)`, `removeAll()`, `exportJSON()` and atomic `WidgetSnapshotStore.write(_:)`.
+**Interfaces:** consumes `AgentSnapshot`; produces `HistoryStore.record(_:now:)`, `samples(since:)`, `removeAll()`, `exportJSON()`.
 
 - [x] Use prepared statements, schema version and one writer; unique identity includes account/window/time.
 - [x] Purge observations older than 90 days, export only allowlisted metrics.
-- [x] Publish only the current display snapshot through an explicitly configured App Group.
 - [x] Run `swift build --target AllowanceStorage`; expected: compilation succeeds.
 
 ### Task 3: Read-only connectors
@@ -87,15 +85,14 @@
 - [x] Honor light/dark appearance, Reduce Motion, keyboard and VoiceOver; localize visible copy.
 - [x] Run `swift build --product LimitRoom`; expected: compilation succeeds.
 
-### Task 6: Widget and application packaging
+### Task 6: Application packaging
 
-**Files:** `Widgets/LimitRoomWidgets.swift`, `LimitRoom.xcodeproj/project.pbxproj`, `Config/*`, `Scripts/build-app.sh`.
+**Files:** `LimitRoom.xcodeproj/project.pbxproj`, `Config/*`, `Scripts/build-app.sh`.
 
-**Interfaces:** widget reads `WidgetSnapshot`; no connectors or database dependencies.
+**Interfaces:** the app composes the package modules; the helper links only AllowanceCore.
 
-- [x] Small and medium layouts read App Group snapshot, show timestamps and open a deep link.
 - [x] Add Xcode targets/schemes and configurable signing; never fabricate a Team ID.
-- [x] Provide local app build command and verify both architectures; signed widget runtime remains a separately recorded verification.
+- [x] Provide local app build command and verify both architectures; installed-app behavior remains a separately recorded verification.
 
 ### Task 7: Review and evidence
 
@@ -107,4 +104,4 @@
 
 ## Initial plan review
 
-The interfaces form a directed graph: Core → Storage/Connectors → Runtime → App; Core → Widget. Export and notifications use already projected values. A source spike may fail independently while the native app remains usable; no unverified integration is reported as complete.
+The interfaces form a directed graph: Core → Storage/Connectors → Runtime → App. Export and notifications use already projected values. A source spike may fail independently while the native app remains usable; no unverified integration is reported as complete.

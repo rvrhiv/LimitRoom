@@ -59,7 +59,7 @@
 
 ### Task 3: Release, visual checks and handoff
 
-**Files:** Modify `App/PreviewRenderer.swift`, `Config/App-Info.plist`, `Config/Widget-Info.plist`, `docs/verification.md`, `docs/implementation-progress.md`, `docs/design/README.md`, `CONTEXT.md` as needed.
+**Files:** Modify `App/PreviewRenderer.swift`, `Config/App-Info.plist`, `docs/verification.md`, `docs/implementation-progress.md`, `docs/design/README.md`, `CONTEXT.md` as needed.
 
 **Interfaces:**
 - Consumes final native UI and existing synthetic offscreen renderer.
@@ -67,7 +67,7 @@
 
 - [ ] Extend existing renderer switches for new display layouts and exact/hidden reset previews; render the integrated header only once. Demo does not collect or persist.
 - [ ] Bump version to 0.3.0/build 3. Run `bash Scripts/build-app.sh Release`. Expected: universal success, no installed app changes.
-- [ ] Run `codesign --verify --deep --strict build/LimitRoom.app`, `lipo -archs` for main/helper, `plutil -lint` for plists/project, `bash -n Scripts/build-app.sh`, `swift format lint --recursive Package.swift App Sources Widgets Scripts/generate-icon.swift`. Expected: valid signature/plists/scripts/style and both architectures.
+- [ ] Run `codesign --verify --deep --strict build/LimitRoom.app`, `lipo -archs` for main/helper, `plutil -lint` for plists/project, `bash -n Scripts/build-app.sh`, `swift format lint --recursive Package.swift App Sources Scripts/generate-icon.swift`. Expected: valid signature/plists/scripts/style and both architectures.
 - [ ] Render and inspect light/dark menu, settings, compact/expanded notch, asymmetric wings, exact/hidden reset, without percentage. Expected: no duplicate camera, no below-camera compact content, no overlap; record limitations honestly.
 - [ ] Run Task 1 build command and `git diff --check`, commit locally `feat: package integrated notch preview release`.
 - [ ] Obtain fresh review of the whole increment; fix important findings in one pass within scope, rerun relevant builds/renders. No new tests without IDs. Record all rulings/deferred minors in verification docs and final handoff.

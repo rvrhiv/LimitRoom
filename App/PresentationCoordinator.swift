@@ -84,7 +84,10 @@ final class PresentationCoordinator {
   }
 
   func openHistory() { windows.openHistory() }
-  func openSettings() { windows.openSettings() }
+  func openSettings() {
+    notch?.close()
+    windows.openSettings()
+  }
 
   private func observe(
     _ name: Notification.Name, center: NotificationCenter = .default,

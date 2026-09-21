@@ -14,13 +14,25 @@ Environment availability/protection depends on GitHub plan for private repositor
 
 ## Publish a version from GitHub
 
-1. Update `CFBundleShortVersionString` and strictly increase `CFBundleVersion` in **both** Config Info.plist files. Never reuse a build number.
+1. Update `CFBundleShortVersionString` and strictly increase `CFBundleVersion` in `Config/App-Info.plist`. Never reuse a build number.
 2. Add `docs/releases/VERSION.md`. Review privacy changes and limitations. Merge to `main` and wait for Build to pass.
 3. Open **Actions → Release → Run workflow**, choose `main`, enter the committed version and build number.
 4. The build job checks and builds a universal app without signing secrets. A separate job downloads that run's artifact, resolves pinned Sparkle tools, signs and verifies the archive/feed, and creates a draft release on the exact commit. Only after all assets upload does it become public/latest.
 5. Confirm the downloadable ZIP, signed `appcast.xml`, release notes and SHA256SUMS. Check update discovery from the previous installed version. Installation/relaunch is a separate manual acceptance check.
 
 The environment must exist with its branch restriction **before** running Release; otherwise GitHub may implicitly create an unprotected environment. A missing key fails the signing job. Existing tags/releases are never overwritten. If publication fails after creating a draft, inspect that draft and its assets before deciding whether to remove/retry it. Do not blindly rerun or replace signed public assets.
+
+## Ready-to-run 0.5.1 release
+
+After the 0.5.1 changes reach `main` and its **Build** workflow succeeds:
+
+1. Open [Actions → Release](https://github.com/rvrhiv/LimitRoom/actions/workflows/release.yml).
+2. Click **Run workflow**, keep branch **main**, enter version **0.5.1** and build **7**, then confirm **Run workflow**.
+3. Wait for both `build` and `publish` jobs to pass. The workflow creates the tag and release itself; do not create them in the Releases UI first.
+4. Open [Releases](https://github.com/rvrhiv/LimitRoom/releases) and confirm the four assets: ZIP, `appcast.xml`, release notes and `SHA256SUMS`.
+5. In the installed 0.5.0 app, use **Settings → Updates → Check for updates**, then choose **Update and relaunch**. The larger panel button appears after upgrading to 0.5.1.
+
+For the next release, commit a new version, a build number above 7 and matching release notes first. Pushing commits runs **Build**, not **Release**; publication requires the explicit manual workflow run.
 
 ## Local preparation / recovery
 
@@ -29,8 +41,8 @@ With full Xcode (CI uses 26.2), SwiftPM and the dedicated Keychain entry:
 ```sh
 swift package resolve
 bash Scripts/build-app.sh Release
-bash Scripts/package-release.sh 0.5.0 6
-bash Scripts/sign-release.sh 0.5.0 6
+bash Scripts/package-release.sh 0.5.1 7
+bash Scripts/sign-release.sh 0.5.1 7
 ```
 
 Packaging refuses to overwrite `build/releases/VERSION`. Preserve/move an earlier staging directory before rebuilding. `sign-release.sh` defaults to the dedicated Keychain entry; CI supplies `SPARKLE_PRIVATE_KEY` only for the signing step. The key is passed to Sparkle through stdin, never as a command-line argument or an exported file. Build/sign do not publish. `publish-release.sh VERSION BUILD COMMIT` is a separate, explicitly authorized action and requires authenticated `gh`.
@@ -39,7 +51,7 @@ The ZIP contains only `LimitRoom.app`, including Sparkle, its helpers and licens
 
 ## Distribution limits
 
-These early builds are ad-hoc signed, **not** Apple Developer ID signed or notarized. Sparkle Ed25519 signing proves update integrity; it does not suppress first-install Gatekeeper checks. Do not remove quarantine or disable Gatekeeper in scripts. Apple distribution credentials, notarization and the installed widget remain separate future work.
+These early builds are ad-hoc signed, **not** Apple Developer ID signed or notarized. Sparkle Ed25519 signing proves update integrity; it does not suppress first-install Gatekeeper checks. Do not remove quarantine or disable Gatekeeper in scripts. Apple distribution credentials and notarization remain separate future work.
 
 Users on 0.4.1 must manually install 0.5.0 once. Quit the old instance and move the app to Applications before enabling launch-at-login. Later updates retain the bundle ID, UserDefaults and Application Support history; the updater does not touch agent credentials.
 
