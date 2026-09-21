@@ -1,0 +1,3 @@
+// Copy to Local.xcconfig; do not commit your local signing configuration.
+// DEVELOPMENT_TEAM = YOUR_REAL_TEAM_ID
+// LIMITROOM_APP_GROUP = YOUR_REAL_TEAM_ID.com.rvrhiv.LimitRoom.shared

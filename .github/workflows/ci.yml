@@ -1,0 +1,28 @@
+name: Build
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: SwiftPM build and source checks
+        run: |
+          swift build
+          swift format lint --strict --recursive Package.swift App Sources Widgets Scripts/generate-icon.swift
+          plutil -lint Config/App-Info.plist Config/Widget-Info.plist LimitRoom.xcodeproj/project.pbxproj
+          for script in Scripts/*.sh; do bash -n "$script"; done
+      - name: Universal application and signatures
+        run: bash Scripts/build-app.sh Release
