@@ -56,7 +56,7 @@ Public images must use synthetic demo data. The existing renderer captures only 
 build/LimitRoom.app/Contents/MacOS/LimitRoom --demo --render-preview "$PWD/build/preview.png" --surface notch-expanded --dark -AppleLanguages '(en)'
 ```
 
-Other supported surfaces and options are defined in `App/PreviewRenderer.swift`. README assets live in `docs/assets/`; inspect them before committing. They are interface previews, not evidence of native screen interaction.
+For statistics, use `--surface history` or `--surface menu --tab statistics`, with `--statistics-mode quota` or `tokens` and `--history-days 1`, `7`, `30`, or `90`. Other supported surfaces and options are defined in `App/PreviewRenderer.swift`. README assets live in `docs/assets/`; inspect them before committing. They are interface previews, not evidence of native screen interaction.
 
 ## Submitting a change
 

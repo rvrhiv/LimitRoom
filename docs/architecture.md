@@ -37,7 +37,9 @@ Keep these invariants:
 
 ### Codex
 
-Run the installed official CLI's App Server over private stdio. Read account and rate-limit methods only; do not create conversations or copy authentication files. Prefer named rate-limit buckets, with the legacy response as a fallback. An explicitly configured invalid CLI path must fail clearly rather than select another binary.
+Run the installed official CLI's App Server over private stdio. Read account, rate-limit, and optional account-token-usage methods only; do not create conversations or copy authentication files. Prefer named rate-limit buckets, with the legacy response as a fallback. An explicitly configured invalid CLI path must fail clearly rather than select another binary.
+
+[`account/usage/read`](https://learn.chatgpt.com/docs/app-server#7-token-usage-chatgpt) provides account-wide daily token counts and an optional lifetime total. Its failure does not invalidate a successful quota read. Bound the request, validate counts and unique calendar dates, and confirm account identity again before publishing token data. Keep missing days distinct from zero and retain provider day labels without timezone rebucketing. Token statistics are memory-only and fetched with quotas; they are not copied into SQLite, the latest-reading cache, or quota exports. Unsupported versions/accounts show unavailable statistics, never a fabricated total.
 
 ### Claude Code
 
@@ -57,13 +59,9 @@ The isolated WebKit sign-in is an explicitly selected alternative, not an automa
 
 SQLite has one writer actor, versioned transactional migrations, and 90-day retention. Deduplicate observations by agent, account, window, and source time.
 
-Consumption trends measure **percentage points per day**:
+Quota charts show **remaining allowance on a fixed 0–100% scale**, calculated from existing observations as `clamp(100 − usedPercent, 0, 100)`. No database migration is needed. Chart selection is independent of the pinned window and limited to the currently confirmed account.
 
-```text
-rate = (usedPercent₂ − usedPercent₁) / elapsedDays
-```
-
-Compare only the same account, window, plan, and cycle. Resets, corrections, and large gaps break continuity. Rolling-window changes describe observed utilization, not total consumption. These charts are not a token, cost, or model-efficiency comparison.
+Connect only observations of the same account, window, plan, and known cycle. A gap longer than the greater of 10 minutes or 1.5 times the configured refresh interval breaks continuity, as do replenishment and corrections. Unknown cycles remain individual observations. Mark a new cycle only after the previous reset deadline passed; never invent a 100% observation. Cache the grouped history projection and use time-bucket extrema plus cycle markers for dense chart rendering, retaining original segment IDs so gaps cannot be joined. Hover values use the complete actual observations. Quota fractions do not measure tokens, cost, or model efficiency.
 
 Quota refresh preferences are 1, 5, 30, or 60 minutes, defaulting to 5. One model-owned 30-second display clock checks whether collection is due; manual refresh and wake use the same coalescing and rate guards. Changing preferences must not create another timer. App-update checks are independent.
 

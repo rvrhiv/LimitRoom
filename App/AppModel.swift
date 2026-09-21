@@ -13,7 +13,7 @@ final class AppModel {
   var settingsPage = SettingsPage.appearance
   var settingsAgent = AgentID.codex
   var snapshots: [AgentSnapshot] = AgentID.allCases.map { AgentSnapshot(agent: $0) }
-  var samples: [HistorySample] = []
+  var samples: [HistorySample] = [] { didSet { historyRevision += 1 } }
   var selection: WindowSelection?
   var chartSelections: [AgentID: String] = [:]
   var isRefreshing = false
@@ -24,6 +24,7 @@ final class AppModel {
   var onboardingComplete: Bool
   var wantsLoginItem = true
   var historyDays = 7
+  var statisticsMode = StatisticsMode.quota
   var displayDate = Date.now
   var cursorSignIn: CursorSignIn?
   var cursorMessage: String?
@@ -44,6 +45,11 @@ final class AppModel {
   @ObservationIgnored private var lastRefresh = Date.distantPast
   @ObservationIgnored private var refreshAgain = false
   @ObservationIgnored private var configurationGeneration = 0
+  @ObservationIgnored private var historyRevision = 0
+  @ObservationIgnored private var historyProjectionKey: HistoryProjectionKey?
+  @ObservationIgnored private var historyProjection: [QuotaHistoryPoint] = []
+  @ObservationIgnored private var historyChartCache:
+    [Bool: (key: HistoryChartKey, data: QuotaChartData)] = [:]
   @ObservationIgnored private var previousFresh: [String: Double] = [:]
   @ObservationIgnored private var notified: Set<String> = []
   @ObservationIgnored private let cursorLocal = CursorLocalConnector()
@@ -165,17 +171,75 @@ final class AppModel {
     else { return nil }
     return (snapshot, window)
   }
-  var rates: [UsageRate] {
-    let cutoff = Date.now.addingTimeInterval(-Double(historyDays) * 86400)
+  var historyRange: ClosedRange<Date> {
+    displayDate.addingTimeInterval(-Double(historyDays) * 86400)...displayDate
+  }
+  var historyMaximumGap: TimeInterval { max(600, quotaRefreshInterval.duration * 1.5) }
+  func quotaChartData(compact: Bool) -> QuotaChartData {
     let currentScopes = Dictionary(
       uniqueKeysWithValues: snapshots.compactMap { snapshot in
         snapshot.accountScope.map { (snapshot.agent, $0) }
       })
-    return TrendCalculator.rates(
-      from: samples.filter {
-        $0.observedAt >= cutoff && $0.accountScope == currentScopes[$0.agent]
-          && chartSelections[$0.agent] == $0.windowID
-      })
+    // Observe sample changes, but don't regroup/sort the 90-day store for every
+    // display-clock tick. The projection is invalidated by data or source choices.
+    _ = samples.count
+    let key = HistoryProjectionKey(
+      revision: historyRevision, scopes: currentScopes, windows: chartSelections,
+      maximumGap: historyMaximumGap)
+    if historyProjectionKey != key {
+      historyProjection = TrendCalculator.remaining(
+        from: samples.filter {
+          $0.accountScope == currentScopes[$0.agent] && chartSelections[$0.agent] == $0.windowID
+        }, maximumGap: historyMaximumGap)
+      historyProjectionKey = key
+    }
+    let chartKey = HistoryChartKey(projection: key, days: historyDays)
+    if let cached = historyChartCache[compact], cached.key == chartKey { return cached.data }
+    // Clock ticks update only the visible domain. Copying, grouping and display
+    // bucketing run once per data/selection change, not every thirty seconds.
+    let range = historyRange
+    func index(after date: Date, includingEqual: Bool) -> Int {
+      var low = 0
+      var high = historyProjection.count
+      while low < high {
+        let middle = (low + high) / 2
+        let value = historyProjection[middle].sample.observedAt
+        if value < date || (includingEqual && value == date) {
+          low = middle + 1
+        } else {
+          high = middle
+        }
+      }
+      return low
+    }
+    let selected = Array(
+      historyProjection[
+        index(
+          after: range.lowerBound, includingEqual: false)..<index(
+            // Fresh readings permit 60 seconds of clock skew. Cache them now;
+            // domain/range checks reveal them only when their timestamp is due.
+            after: range.upperBound.addingTimeInterval(60), includingEqual: true)
+      ])
+    let data = QuotaChartData(points: selected, compact: compact)
+    historyChartCache[compact] = (chartKey, data)
+    return data
+  }
+
+  private struct HistoryProjectionKey: Equatable {
+    let revision: Int
+    let scopes: [AgentID: String]
+    let windows: [AgentID: String]
+    let maximumGap: TimeInterval
+  }
+  private struct HistoryChartKey: Equatable {
+    let projection: HistoryProjectionKey
+    let days: Int
+  }
+  var codexTokenUsage: CodexTokenUsage? {
+    guard let snapshot = snapshots.first(where: { $0.agent == .codex }),
+      snapshot.accountScope != nil, snapshot.state == .ready || snapshot.state == .unsupported
+    else { return nil }
+    return snapshot.codexTokenUsage
   }
 
   func refresh() async {
@@ -222,6 +286,7 @@ final class AppModel {
         refreshAgain = true
         return
       }
+      displayDate = .now
       samples = readings
     } catch { errorMessage = localized("Не удалось прочитать историю.", "Could not read history.") }
     let storageFailed = await monitor.storageFailed
@@ -259,6 +324,13 @@ final class AppModel {
   func applyCodexPath() async {
     guard !isDemo else { return }
     configurationGeneration += 1
+    // Claude scope rotation also rebuilds these connectors, without changing Codex.
+    if codexPath != (defaults.string(forKey: "codexPath") ?? "") {
+      if let index = snapshots.firstIndex(where: { $0.agent == .codex }) {
+        snapshots[index] = AgentSnapshot(agent: .codex)
+      }
+      await monitor.forget(.codex)
+    }
     defaults.set(codexPath, forKey: "codexPath")
     await monitor.replaceConnectors([
       CodexConnector(executable: ExecutableLocator.find("codex", explicit: codexPath)),
@@ -616,6 +688,7 @@ final class AppModel {
   }
   private func loadDemo() {
     let now = Date.now
+    displayDate = now
     let values: [(AgentID, String, Double, Double)] = [
       (.codex, "Pro", 32, 56), (.claude, "Max", 18, 37), (.cursor, "Pro", 45, 24),
     ]
@@ -633,22 +706,47 @@ final class AppModel {
             durationMinutes: agent == .cursor ? 43200 : 10080,
             resetsAt: now.addingTimeInterval(250000), kind: .fixed),
         ],
-        observedAt: now, state: .ready, source: "Demo")
+        observedAt: now, state: .ready, source: "Demo",
+        codexTokenUsage: agent == .codex
+          ? CodexTokenUsage(
+            state: .ready, observedAt: now, lifetimeTokens: 18_460_200,
+            days: [420_000, 685_300, 0, 940_200, 538_000, 781_400, 312_800].enumerated().map {
+              offset, tokens in
+              let formatter = DateFormatter()
+              formatter.locale = Locale(identifier: "en_US_POSIX")
+              formatter.calendar = Calendar(identifier: .gregorian)
+              formatter.timeZone = TimeZone(secondsFromGMT: 0)
+              formatter.dateFormat = "yyyy-MM-dd"
+              return CodexTokenDay(
+                day: formatter.string(from: now.addingTimeInterval(Double(offset - 6) * 86400)),
+                tokens: Int64(tokens))
+            }) : nil)
     }
     selection = WindowSelection(agent: .codex, windowID: "period")
     for snapshot in snapshots {
       chartSelections[snapshot.agent] = "period"
       guard let window = snapshot.windows.last else { continue }
-      for tick in 0...144 {
+      for tick in 0...2016 {
+        // Synthetic gap and reset make the chart's continuity rules visible.
+        if snapshot.agent == .claude, (1240...1300).contains(tick) { continue }
+        let date = now.addingTimeInterval(Double(tick - 2016) * 300)
+        let resetTick = 980
+        let hasDemoReset = snapshot.agent == .codex
+        let beforeReset = hasDemoReset && tick < resetTick
+        let cycle =
+          beforeReset
+          ? String(
+            Int64(now.addingTimeInterval(Double(resetTick - 2016) * 300).timeIntervalSince1970))
+          : window.cycleKey
+        let used =
+          beforeReset
+          ? 45 + Double(tick) * 0.05
+          : max(0, (window.usedPercent ?? 0) - Double(2016 - tick) * 0.045)
         samples.append(
           HistorySample(
             agent: snapshot.agent, accountScope: snapshot.accountScope!, windowID: window.id,
-            windowTitle: window.title, cycleKey: window.cycleKey, plan: snapshot.plan,
-            observedAt: now.addingTimeInterval(Double(tick - 144) * 300),
-            usedPercent: max(
-              0,
-              (window.usedPercent ?? 0) - Double(144 - tick)
-                * (snapshot.agent == .codex ? 0.09 : 0.05))))
+            windowTitle: window.title, cycleKey: cycle, plan: snapshot.plan,
+            observedAt: date, usedPercent: used))
       }
     }
   }

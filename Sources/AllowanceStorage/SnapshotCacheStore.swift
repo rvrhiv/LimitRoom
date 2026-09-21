@@ -15,13 +15,20 @@ public struct SnapshotCacheStore: Sendable {
     .map { value in
       var snapshot = value
       snapshot.state = .stale
+      snapshot.codexTokenUsage = nil
       return snapshot
     }
   }
   public func write(_ snapshots: [AgentSnapshot]) throws {
     try FileManager.default.createDirectory(
       at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try JSONEncoder().encode(snapshots).write(to: file, options: .atomic)
+    // Daily history comes from Codex; do not cache another account's token totals.
+    let quotaOnly = snapshots.map { value in
+      var snapshot = value
+      snapshot.codexTokenUsage = nil
+      return snapshot
+    }
+    try JSONEncoder().encode(quotaOnly).write(to: file, options: .atomic)
     try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
   }
 }

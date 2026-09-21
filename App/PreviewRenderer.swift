@@ -54,10 +54,22 @@ enum PreviewRenderer {
       model.presentation.sideWidth = value
     }
     let tab = argument("--tab").flatMap(DashboardTab.init(rawValue:)) ?? .quotas
+    if let raw = argument("--statistics-mode"), let mode = StatisticsMode(rawValue: raw) {
+      model.statisticsMode = mode
+    }
+    if let raw = argument("--history-days"), let days = Int(raw), [1, 7, 30, 90].contains(days) {
+      model.historyDays = days
+    }
     let surface = argument("--surface") ?? "menu"
     let content: AnyView
     let size: CGSize
     switch surface {
+    case "history":
+      size = CGSize(width: 860, height: 740)
+      content = AnyView(
+        HistoryView(model: model)
+          .environment(\.colorScheme, dark ? .dark : .light)
+          .background(dark ? Color.black : Color.white))
     case "connections":
       model.settingsPage = .agents
       size = CGSize(width: 840, height: 700)

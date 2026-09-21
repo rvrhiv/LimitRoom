@@ -62,9 +62,13 @@ In **General**, select a quota refresh interval of 1, 5, 30, or 60 minutes (defa
 
 ## History and meaning
 
-Statistics compares observed changes in quota utilization, measured in **percentage points per day**. Select a window for each agent independently of the pinned indicator. Different plans have different capacities: this is not a comparison of tokens, cost, or model efficiency.
+**Quota remaining** shows how much allowance was left at each observation, on a fixed **0–100%** scale. A falling line means less headroom. Select a window for each agent independently of the pinned indicator; hover to see its exact reading, window, and time. A diamond marks the first reading in a new cycle, not a measured reset instant. Gaps are not filled with invented readings. Different plans have different capacities: equal percentages do not mean equal tokens or cost.
 
-History is retained for 90 days and can be exported as CSV/JSON or cleared from the history window. Resets, account/plan changes, corrections, and long gaps break chart continuity. No continuous history is collected while LimitRoom is closed, though the Claude helper can update its latest local reading.
+**Codex tokens** shows daily account activity reported by the official Codex App Server, plus a lifetime total when available. This is not limited to this Mac and does not require reading conversations. The selected period ends on the latest day returned by Codex, with dates kept as the source reports them. Totals cover only reported days; missing days are unknown, while an explicit zero is shown as zero. Tokens cannot be converted into subscription quota percentages or prices. Claude and Cursor token statistics are not included yet.
+
+Token statistics require a supporting Codex version and account. Older versions or unavailable responses leave this mode unavailable without breaking the quota display. Counts are fetched with quota refreshes and stay in memory only; clearing or exporting local quota history does not delete or export Codex's account activity.
+
+Local quota history is retained for 90 days and can be exported as CSV/JSON or cleared from the history window. Resets, account/plan changes, corrections, and long gaps break chart continuity. No continuous quota history is collected while LimitRoom is closed, though the Claude helper can update its latest local reading.
 
 ## Data and privacy
 

@@ -33,6 +33,7 @@ public struct CodexConnector: AllowanceConnector {
       throw ConnectorError.signedOut
     }
     let limitsReply = try rpc.request("account/rateLimits/read", id: 3, params: [:])
+    let quotaObservedAt = Date.now
     let buckets: [(String, [String: Any])]
     if let byID = limitsReply["rateLimitsByLimitId"] as? [String: [String: Any]], !byID.isEmpty {
       buckets = byID.sorted { $0.key < $1.key }.map { ($0.key, $0.value) }
@@ -70,13 +71,75 @@ public struct CodexConnector: AllowanceConnector {
       subscription.creditBalance = credits["balance"] as? String
       subscription.isUnlimited = credits["unlimited"] as? Bool
     }
+    var tokenUsage = CodexTokenUsage(state: .unavailable)
+    if identity != nil {
+      do {
+        let reply = try rpc.request("account/usage/read", id: 4, params: [:], timeout: 3)
+        tokenUsage = try decodeTokenUsage(reply)
+      } catch RPCError.server(let code) where code == -32601 {
+        tokenUsage = CodexTokenUsage(state: .unsupported)
+      } catch {
+        // Optional statistics must never make a successful quota read fail.
+        tokenUsage = CodexTokenUsage(state: .unavailable)
+      }
+      if tokenUsage.state == .ready {
+        if let verifiedReply = try? rpc.request(
+          "account/read", id: 5, params: ["refreshToken": false], timeout: 2)
+        {
+          guard let verified = verifiedReply["account"] as? [String: Any],
+            (verified["id"] as? String ?? verified["email"] as? String) == identity
+          else { throw ConnectorError.signedOut }
+        } else {
+          tokenUsage = CodexTokenUsage(state: .unavailable)
+        }
+      }
+    }
     return AgentSnapshot(
       agent: .codex, accountScope: scope, accountLabel: account["email"] as? String,
       plan: account["planType"] as? String ?? buckets.first?.1["planType"] as? String,
-      subscription: subscription, windows: windows, observedAt: .now,
-      state: windows.isEmpty ? .unsupported : .ready, source: "Codex App Server")
+      subscription: subscription, windows: windows, observedAt: quotaObservedAt,
+      state: windows.isEmpty ? .unsupported : .ready, source: "Codex App Server",
+      codexTokenUsage: tokenUsage)
+  }
+
+  private static func decodeTokenUsage(_ reply: [String: Any]) throws -> CodexTokenUsage {
+    struct Reply: Decodable {
+      struct Summary: Decodable { let lifetimeTokens: Int64? }
+      struct Day: Decodable {
+        let startDate: String
+        let tokens: Int64
+      }
+      let summary: Summary
+      let dailyUsageBuckets: [Day]?
+    }
+    let decoded = try JSONDecoder().decode(
+      Reply.self, from: JSONSerialization.data(withJSONObject: reply))
+    guard decoded.summary.lifetimeTokens.map({ $0 >= 0 }) ?? true,
+      (decoded.dailyUsageBuckets?.count ?? 0) <= 3660
+    else { throw ConnectorError.invalidResponse }
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.calendar = Calendar(identifier: .gregorian)
+    formatter.timeZone = TimeZone(secondsFromGMT: 0)
+    formatter.dateFormat = "yyyy-MM-dd"
+    formatter.isLenient = false
+    var seen: Set<String> = []
+    let days = try decoded.dailyUsageBuckets?.map { day -> CodexTokenDay in
+      guard day.tokens >= 0, day.startDate.utf8.count == 10,
+        day.startDate.range(of: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", options: .regularExpression) != nil,
+        let date = formatter.date(from: day.startDate),
+        formatter.string(from: date) == day.startDate,
+        seen.insert(day.startDate).inserted
+      else { throw ConnectorError.invalidResponse }
+      return CodexTokenDay(day: day.startDate, tokens: day.tokens)
+    }
+    return CodexTokenUsage(
+      state: .ready, observedAt: .now, lifetimeTokens: decoded.summary.lifetimeTokens,
+      days: days?.sorted { $0.day < $1.day })
   }
 }
+
+private enum RPCError: Error { case server(Int) }
 
 private final class RPCProcess: @unchecked Sendable {
   private let process = Process()
@@ -110,10 +173,13 @@ private final class RPCProcess: @unchecked Sendable {
     try? output.fileHandleForReading.close()
   }
   func notify(_ method: String) throws { try send(["method": method, "params": [:]]) }
-  func request(_ method: String, id: Int, params: [String: Any]) throws -> [String: Any] {
+  func request(
+    _ method: String, id: Int, params: [String: Any], timeout: TimeInterval = 15
+  ) throws -> [String: Any] {
+    let requestDeadline = min(deadline, ProcessInfo.processInfo.systemUptime + timeout)
     try send(["method": method, "id": id, "params": params])
     while true {
-      let line = try nextLine()
+      let line = try nextLine(until: requestDeadline)
       guard let message = try JSONSerialization.jsonObject(with: line) as? [String: Any] else {
         continue
       }
@@ -122,7 +188,10 @@ private final class RPCProcess: @unchecked Sendable {
         continue
       }
       guard (message["id"] as? NSNumber)?.intValue == id else { continue }
-      guard message["error"] == nil else { throw ConnectorError.unavailable }
+      if let error = message["error"] as? [String: Any] {
+        throw RPCError.server((error["code"] as? NSNumber)?.intValue ?? 0)
+      }
+      guard message["error"] == nil else { throw ConnectorError.invalidResponse }
       guard let result = message["result"] as? [String: Any] else {
         throw ConnectorError.invalidResponse
       }
@@ -134,9 +203,9 @@ private final class RPCProcess: @unchecked Sendable {
     data.append(10)
     try input.fileHandleForWriting.write(contentsOf: data)
   }
-  private func nextLine() throws -> Data {
+  private func nextLine(until requestDeadline: TimeInterval) throws -> Data {
     while true {
-      let remaining = deadline - ProcessInfo.processInfo.systemUptime
+      let remaining = requestDeadline - ProcessInfo.processInfo.systemUptime
       guard remaining > 0 else { throw ConnectorError.timedOut }
       if let index = buffer.firstIndex(of: 10) {
         let line = buffer.prefix(upTo: index)
