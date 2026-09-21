@@ -2,13 +2,13 @@
 
 ## Settings and signed releases 0.5.0 (6) — 2026-09-21
 
-Local artifacts: `build/LimitRoom.app` and `build/releases/0.5.0/LimitRoom-0.5.0.zip`. The installed app, live agent credentials and provider settings were not changed. Publication is pending approval of the final review fix; the repository is still private and no release or signing secret has been uploaded.
+Local artifacts: `build/LimitRoom.app` and `build/releases/0.5.0/LimitRoom-0.5.0.zip`. The installed app, live agent credentials and provider settings were not changed. The local checks below preceded publication; hosted publication evidence is recorded separately below.
 
 Confirmed:
 
 - Full SwiftPM and universal Xcode Release builds pass after the final fix. Main/helper contain `x86_64 arm64`; deep/strict signature verification passes for the packaged app and again after extracting the ZIP. Bundle version/build are 0.5.0 (6). These are ad-hoc signatures, not Developer ID/notarization.
 - Strict Swift format, both Info.plists, Xcode project, Bash syntax, whitespace checks and actionlint 1.7.12 pass. Workflow syntax validation is not a successful GitHub Actions run.
-- The official Sparkle 2.10.0 tools generated and verified the archive/feed signatures; SHA256SUMS verifies all staged assets. A dedicated signing key is backed up in Keychain; only its public key is in source. Shared environment signing is implemented in the workflow but not yet activated on GitHub.
+- The official Sparkle 2.10.0 tools generated and verified the archive/feed signatures; SHA256SUMS verifies all staged assets. A dedicated signing key is backed up in Keychain; only its public key is in source. Activation of shared environment signing is covered by the hosted evidence below.
 - Own-view Release renders were inspected for RU/EN settings, dark/light appearance, the Cursor connection page, update availability/progress and expanded notch. All synthetic data is marked DEMO. The official Cursor cube geometry and attribution replace the previous pointer mark.
 - The opening diagnostic reproduced the clipped/shifted header at the initial collapsed width. After separating the fixed-width dashboard from the actual-width header and updating native geometry atomically, the same own-view sample preserves header positions. This is not proof of smooth physical animation or rapid reversal on every display.
 - The reviewed source tree and staged archive contain no recognized credential patterns or personal checkout paths. Targeted ignore rules cover runtime databases, provider settings, logs and private signing material. This is a heuristic audit, not a guarantee against every possible secret. Public history must start from a separate reviewed snapshot with noreply author metadata; original local history must not be pushed.
@@ -21,10 +21,20 @@ Acceptance still needed:
 
 - Physical notch movement, rapid direction changes, Spaces, camera alignment, haptics, full-area hit testing and VoiceOver.
 - A real signed update from an older installed app through replacement/relaunch, including cancellation, subsequent background failures and first-install Gatekeeper behavior. Version 0.4.1 has no updater and needs one manual installation of 0.5.0.
-- Remote snapshot identity/tree, public access, the protected `release` environment, secret metadata, successful hosted CI/release jobs and anonymously downloadable signed assets. Local signing does not establish a live update channel.
 - Previously documented live Claude/Cursor and installed-widget acceptance remains open. Provider credentials were not accessed for release validation.
 
 No new tests or assertion harnesses were created: assigned test-case IDs are absent. Compilation, source tracing and own-view rendering are not automated regression coverage. No second reviewer was dispatched after the single fix pass.
+
+### Hosted publication evidence
+
+- Explicit approval of the final cancellation fix and publication was received before any remote mutation.
+- Public root `5d72f9cdb9edb57f2c127ecbadaf1556176092ed` has no parents and exactly matches the reviewed tree `d91c2812c8107a9f9b45b04916a683ccdffd4434`. Both author and committer use GitHub noreply identity. Anonymous GitHub API reads confirm public access and those metadata.
+- [Hosted Build 35650096689](https://github.com/rvrhiv/LimitRoom/actions/runs/35650096689) passed on that root, including SwiftPM/source checks and universal application/signature checks.
+- The `release` environment permits only the branch `main`, with no tag or wildcard policy. The dedicated `SPARKLE_PRIVATE_KEY` was transferred directly from Keychain to that environment secret without writing or printing its value. Only secret metadata was read back. No provider credentials were used.
+- [Release 35650491179](https://github.com/rvrhiv/LimitRoom/actions/runs/35650491179) passed both build and publish jobs for 0.5.0 (6). Public [tag v0.5.0](https://github.com/rvrhiv/LimitRoom/releases/tag/v0.5.0) points to the verified root; the release is neither draft nor prerelease.
+- ZIP, signed appcast, notes and SHA256SUMS were downloaded with curl configuration/authentication disabled. All checksums match the published GitHub asset digests. The stable `releases/latest/download/appcast.xml` endpoint serves the identical signed feed.
+- Official Sparkle tools verify the downloaded feed and archive against the dedicated key. After extraction, deep/strict native signature verification passes; main/helper/Sparkle each contain `x86_64 arm64`. The app reports 0.5.0 (6) and embeds the expected public verification key. No installed-app replacement was performed.
+- The hosted ZIP SHA256 is `6326fb004dfcbfd76b1f71aedabd5b7664cea10914280f7b6dfa25f106b29469`. Targeted archive filename and executable-string checks found no agent settings/databases, private keys or personal machine paths. This remains a heuristic privacy check.
 
 ## Native indicator and Cursor.app connection 0.4.1 (5) — 2026-09-21
 
