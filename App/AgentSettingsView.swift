@@ -127,11 +127,7 @@ struct AgentSettingsView: View {
 
         } else {
           Section("Cursor") {
-            HStack {
-              Text(localized("Личная подписка", "Personal subscription"))
-              Text(localized("Экспериментально", "Experimental")).font(.caption2).foregroundStyle(
-                .orange)
-            }
+            Text(localized("Личная подписка", "Personal subscription"))
             Text(
               localized(
                 "Используйте аккаунт, в который уже вошли в установленном Cursor. Квоту запрашиваем у Cursor, а не вычисляем по локальным чатам.",

@@ -36,7 +36,7 @@ After switching Claude accounts, use the account-change action in LimitRoom and 
 
 Claude sends quota observations through its active session. Repeated unchanged input may remain marked stale; polling the local file does not request a fresh quota from Anthropic.
 
-### Cursor — experimental
+### Cursor
 
 Sign in to the installed Cursor app, then choose **Connect Cursor.app…** in LimitRoom and confirm access. LimitRoom reads the current session from Cursor's local store in read-only mode, then requests personal usage from Cursor. It does not derive quota from conversations.
 
@@ -62,7 +62,7 @@ In **General**, select a quota refresh interval of 1, 5, 30, or 60 minutes (defa
 
 ## History and meaning
 
-**Quota remaining** shows how much allowance was left at each observation, on a fixed **0–100%** scale. A falling line means less headroom. Select a window for each agent independently of the pinned indicator; hover to see its exact reading, window, and time. A diamond marks the first reading in a new cycle, not a measured reset instant. Gaps are not filled with invented readings. Different plans have different capacities: equal percentages do not mean equal tokens or cost.
+**Quota remaining** shows how much allowance was left at each observation, on a fixed **0–100%** scale. A falling line means less headroom. Select a window for each agent independently of the pinned indicator; hover to see its exact reading, window, and time. Curves visually connect comparable readings without changing their values. A diamond marks the first reading in a new cycle, not a measured reset instant. Gaps are not filled with invented readings. Different plans have different capacities: equal percentages do not mean equal tokens or cost.
 
 **Codex tokens** shows daily account activity reported by the official Codex App Server, plus a lifetime total when available. This is not limited to this Mac and does not require reading conversations. The selected period ends on the latest day returned by Codex, with dates kept as the source reports them. Totals cover only reported days; missing days are unknown, while an explicit zero is shown as zero. Tokens cannot be converted into subscription quota percentages or prices. Claude and Cursor token statistics are not included yet.
 

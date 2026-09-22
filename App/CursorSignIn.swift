@@ -102,8 +102,8 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
       message?(
         snapshot.state == .ready
           ? localized(
-            "Личная квота подключена. Источник dashboard — экспериментальный.",
-            "Personal usage connected. The dashboard source is experimental.")
+            "Личная квота подключена.",
+            "Personal usage connected.")
           : localized(
             "Вход выполнен, но dashboard не вернул измеримую личную квоту.",
             "Signed in, but the dashboard returned no measurable personal allowance."))
@@ -146,6 +146,6 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
       previous.state = .stale
       return previous
     }
-    return AgentSnapshot(agent: .cursor, state: state, source: "Cursor Dashboard (experimental)")
+    return AgentSnapshot(agent: .cursor, state: state, source: "Cursor Dashboard")
   }
 }

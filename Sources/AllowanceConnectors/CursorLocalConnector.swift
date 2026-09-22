@@ -10,7 +10,7 @@ public actor CursorLocalConnector: AllowanceConnector {
   private var lastSubject: String?
   private var generation = 0
   private var activeSession: URLSession?
-  private let source = "Cursor.app → Cursor Dashboard (experimental)"
+  private let source = "Cursor.app → Cursor Dashboard"
 
   public init() {}
 

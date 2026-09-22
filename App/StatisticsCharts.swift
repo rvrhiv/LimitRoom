@@ -174,7 +174,8 @@ private struct QuotaHistoryChart: View {
             y: .value(localized("Осталось", "Remaining"), point.remainingPercent),
             series: .value("segment", point.segment)
           ).foregroundStyle(by: .value(localized("Агент", "Agent"), point.sample.agent.title))
-            .lineStyle(StrokeStyle(lineWidth: 2)).interpolationMethod(.linear)
+            .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            .interpolationMethod(.monotone)
           if point.beginsNewCycle || markedPointIDs.contains(point.id) {
             PointMark(
               x: .value(localized("Время", "Time"), point.sample.observedAt),

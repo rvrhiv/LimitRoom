@@ -53,7 +53,7 @@ Local-session access requires separate consent. Read only the authentication rec
 
 Only fixed HTTPS usage and identity endpoints on `cursor.com` may receive that session. Reject redirects, bound response size and time, match server identity, and recheck the local account before publishing a result. Authorization, identity, or response-format failures invalidate readings.
 
-The isolated WebKit sign-in is an explicitly selected alternative, not an automatic fallback. It never imports another app's cookies. Project personal usage only; neither team Admin APIs nor averages of unrelated percentages represent a personal allowance. This private dashboard contract remains experimental.
+The isolated WebKit sign-in is an explicitly selected alternative, not an automatic fallback. It never imports another app's cookies. Project personal usage only; neither team Admin APIs nor averages of unrelated percentages represent a personal allowance. The private dashboard contract can change independently of LimitRoom.
 
 ## History and scheduling
 
@@ -61,7 +61,7 @@ SQLite has one writer actor, versioned transactional migrations, and 90-day rete
 
 Quota charts show **remaining allowance on a fixed 0–100% scale**, calculated from existing observations as `clamp(100 − usedPercent, 0, 100)`. No database migration is needed. Chart selection is independent of the pinned window and limited to the currently confirmed account.
 
-Connect only observations of the same account, window, plan, and known cycle. A gap longer than the greater of 10 minutes or 1.5 times the configured refresh interval breaks continuity, as do replenishment and corrections. Unknown cycles remain individual observations. Mark a new cycle only after the previous reset deadline passed; never invent a 100% observation. Cache the grouped history projection and use time-bucket extrema plus cycle markers for dense chart rendering, retaining original segment IDs so gaps cannot be joined. Hover values use the complete actual observations. Quota fractions do not measure tokens, cost, or model efficiency.
+Connect only observations of the same account, window, plan, and known cycle. A gap longer than the greater of 10 minutes or 1.5 times the configured refresh interval breaks continuity, as do replenishment and corrections. Unknown cycles remain individual observations. Mark a new cycle only after the previous reset deadline passed; never invent a 100% observation. Cache the grouped history projection and use time-bucket extrema plus cycle markers for dense chart rendering, retaining original segment IDs so gaps cannot be joined. Monotone interpolation smooths each displayed segment without overshooting its readings or bridging breaks. Hover values use the complete actual observations. Quota fractions do not measure tokens, cost, or model efficiency.
 
 Quota refresh preferences are 1, 5, 30, or 60 minutes, defaulting to 5. One model-owned 30-second display clock checks whether collection is due; manual refresh and wake use the same coalescing and rate guards. Changing preferences must not create another timer. App-update checks are independent.
 

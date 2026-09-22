@@ -442,8 +442,8 @@ final class AppModel {
         "Cursor account changed during refresh. Previous readings are hidden; connect again.")
     case .invalidResponse:
       localized(
-        "Cursor вернул неизвестный формат данных. Источник экспериментальный; проверьте личную квоту на dashboard.",
-        "Cursor returned an unknown data format. This source is experimental; check your personal dashboard."
+        "Cursor вернул неизвестный формат данных. Проверьте личную квоту на dashboard.",
+        "Cursor returned an unknown data format. Check your personal dashboard."
       )
     case .unavailable:
       localized(
@@ -455,8 +455,8 @@ final class AppModel {
           "Вход Cursor.app подтверждён, но сервер не вернул измеримую личную квоту.",
           "Cursor.app sign-in confirmed, but the server returned no measurable personal allowance.")
         : localized(
-          "Подключён аккаунт Cursor.app. Квота и подписка получены от Cursor; источник экспериментальный.",
-          "Cursor.app account connected. Usage and subscription come from Cursor; this source is experimental."
+          "Подключён аккаунт Cursor.app. Квота и подписка получены от Cursor.",
+          "Cursor.app account connected. Usage and subscription come from Cursor."
         )
     }
   }

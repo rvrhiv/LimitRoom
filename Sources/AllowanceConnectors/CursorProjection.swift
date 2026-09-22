@@ -42,7 +42,7 @@ public enum CursorProjection {
   public static func snapshot(from data: Data, now: Date = .now) throws -> AgentSnapshot {
     guard data.count <= 65_536 else { throw ConnectorError.invalidResponse }
     let payload = try JSONDecoder().decode(Payload.self, from: data)
-    return try project(payload, now: now, source: "Cursor Dashboard (experimental)")
+    return try project(payload, now: now, source: "Cursor Dashboard")
   }
 
   /// Local credentials and server identity must refer to the same account.

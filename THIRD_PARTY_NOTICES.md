@@ -16,6 +16,10 @@ The filled vector path in `App/AgentIcon.swift` is from the [official OpenAI bra
 
 Cursor's 2D cube is reproduced from `General Logos/Cube/SVG/CUBE_2D_DARK.svg` in the official [Cursor brand assets](https://cursor.com/brand), retrieved 2026-09-21. Its filled vector geometry is preserved and rendered monochromatically to identify the Cursor agent, not as LimitRoom branding. Cursor and its marks belong to Anysphere, Inc. No endorsement or affiliation is implied. These marks are not covered by LimitRoom's source-code license.
 
+## Anthropic / Claude
+
+The Claude Spark in `App/AgentIcon.swift` is reproduced from `Anthropic logos/Claude logos/3 Claude Spark/SVG/Claude Spark - Clay.svg` in the [official Anthropic press kit](https://www.anthropic.com/press-kit), retrieved 2026-09-22. Its vector geometry and proportions are preserved; it is rendered monochromatically to identify Claude Code, not as LimitRoom branding. Claude, Claude Code, and their marks belong to Anthropic. No endorsement or affiliation is implied. These marks are not covered by LimitRoom's source-code license.
+
 ## Other product names
 
-Claude and Claude Code are Anthropic product names. All referenced product names and marks belong to their respective owners; the MIT license does not grant rights to those marks.
+All referenced product names and marks belong to their respective owners; the MIT license does not grant rights to those marks.

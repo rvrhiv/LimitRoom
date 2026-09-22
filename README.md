@@ -65,7 +65,7 @@ This allows this app without disabling Gatekeeper. Do not bypass warnings about 
 | --- | --- | --- |
 | **Codex** | Your installed Codex CLI and existing ChatGPT sign-in | Subscription windows and optional account token statistics; requires a CLI with App Server support. |
 | **Claude Code** | An explicitly enabled, reversible status-line helper | Quotas reported by an active Claude Code session; availability depends on its version and subscription. |
-| **Cursor** | Your installed Cursor session, with your permission | **Experimental** personal usage via Cursor's private dashboard endpoints; compatibility can change. An isolated web sign-in is also available. |
+| **Cursor** | Your installed Cursor session, with your permission | Personal usage via Cursor's private dashboard endpoints; compatibility can change. An isolated web sign-in is also available. |
 
 One active account per agent. Subscription details and reset times appear when the source provides them. Missing or stale data stays visibly missing or stale — it never becomes a made-up balance. [Connection guide →](docs/usage.md#connect-your-agents)
 
