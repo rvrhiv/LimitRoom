@@ -25,7 +25,10 @@ for limitroom_setting in SURequireSignedFeed SUVerifyUpdateBeforeExtraction; do
 done
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$limitroom_plist")" == "$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$limitroom_root/Config/App-Info.plist")" ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$limitroom_plist")" == https://github.com/rvrhiv/LimitRoom/releases/latest/download/appcast.xml ]]
-[[ -f "$limitroom_root/docs/releases/$limitroom_version.md" ]]
+if [[ -e "$limitroom_root/docs/releases/$limitroom_version.md" && ! -s "$limitroom_root/docs/releases/$limitroom_version.md" ]]; then
+  echo 'Supplied release notes must not be empty.' >&2
+  exit 1
+fi
 /usr/bin/codesign --verify --deep --strict "$limitroom_app"
 for limitroom_binary in "$limitroom_app/Contents/MacOS/LimitRoom" "$limitroom_app/Contents/Helpers/limitroom-claude-bridge" "$limitroom_app/Contents/Frameworks/Sparkle.framework/Sparkle"; do
   /usr/bin/lipo "$limitroom_binary" -verify_arch arm64 x86_64
@@ -36,5 +39,7 @@ if [[ -e "$limitroom_output" ]]; then
 fi
 mkdir -p "$limitroom_output"
 /usr/bin/ditto -c -k --keepParent --norsrc "$limitroom_app" "$limitroom_output/LimitRoom-$limitroom_version.zip"
-cp "$limitroom_root/docs/releases/$limitroom_version.md" "$limitroom_output/LimitRoom-$limitroom_version.md"
+if [[ -f "$limitroom_root/docs/releases/$limitroom_version.md" ]]; then
+  cp "$limitroom_root/docs/releases/$limitroom_version.md" "$limitroom_output/LimitRoom-$limitroom_version.md"
+fi
 echo "Packaged $limitroom_version ($limitroom_number). Signing is still required."

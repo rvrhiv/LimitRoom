@@ -6,7 +6,7 @@ For security issues, use [private reporting](SECURITY.md), not a public issue.
 
 ## Local development
 
-Use macOS 14+ and full Xcode with Swift 6. The workflow files specify the CI Xcode version. This is a Swift/Xcode project; no Node.js tooling is required.
+Use macOS 14+ and full Xcode with Swift 6. The Release workflow specifies the CI Xcode version. This is a Swift/Xcode project; no Node.js tooling is required.
 
 ```sh
 git clone https://github.com/rvrhiv/LimitRoom.git
@@ -36,6 +36,8 @@ git diff --check
 ```
 
 For documentation-only changes, check links, assets, language parity, and factual claims; rebuilding unchanged app code is not required. Run a workflow linter when modifying GitHub Actions.
+
+The repository has one manual **Release** workflow. It runs source checks and both app builds before publication; pushes and pull requests do not start CI. Run relevant checks locally before submitting a change.
 
 There is currently no automated behavioral test suite. New tests require an assigned test-case ID from the task or issue, included in the test title. Ask for an ID when proposing a test; never invent one. Without an ID, report the coverage gap and use builds, existing tools, and manual checks. Updating or running existing tests does not need a new ID.
 

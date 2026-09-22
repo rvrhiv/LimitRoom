@@ -1,18 +1,19 @@
 # Releasing LimitRoom
 
-Official downloads and the Sparkle feed come from public [GitHub Releases](https://github.com/rvrhiv/LimitRoom/releases). A push runs **Build**, not **Release**. Publication is a separate manual action.
+Official downloads and the Sparkle feed come from public [GitHub Releases](https://github.com/rvrhiv/LimitRoom/releases). The repository has one manual **Release** workflow. Pushes and pull requests do not start builds or publish anything; run local checks before merging.
 
 ## Publish from GitHub
 
-1. Update `CFBundleShortVersionString` and strictly increase `CFBundleVersion` in `Config/App-Info.plist`. Add matching `docs/releases/VERSION.md`.
-2. Review the changes and privacy implications, merge to `main`, and wait for **Build** to pass.
-3. Open [Actions → Release](https://github.com/rvrhiv/LimitRoom/actions/workflows/release.yml), select **Run workflow**, keep **main**, and enter the committed version and build number.
-4. Wait for both jobs. The build job creates a universal app without signing secrets. The protected publish job signs and verifies the artifacts, creates a draft at that exact commit, uploads all assets, then publishes it.
-5. Check the release ZIP, `appcast.xml`, release notes, and `SHA256SUMS`. From the previous installed version, verify discovery, explicit installation, relaunch, and preservation of preferences/history.
+1. Review the changes and privacy implications, run relevant [local checks](../CONTRIBUTING.md#verification), and merge to `main`. Optionally add `docs/releases/VERSION.md` for curated release notes; otherwise GitHub generates them.
+2. Open [Actions → Release](https://github.com/rvrhiv/LimitRoom/actions/workflows/release.yml), select **Run workflow**, keep **main**, and enter only the new version, such as `0.7.0`. Use `MAJOR.MINOR.PATCH`, without a `v` prefix; it must be newer than the latest published release.
+3. Wait for both jobs. The build job takes current `main` at checkout, freezes that commit, assigns the next build number, and runs source checks plus universal Dev and distribution builds without signing secrets. The protected publish job uses the same commit, prepares release notes, signs and verifies the artifacts, then publishes the release.
+4. Check the successful run and the release's ZIP, `appcast.xml`, release notes, and `SHA256SUMS` asset listing. Separately validate update discovery, explicit installation, relaunch, and preservation of preferences/history from a previous installed version.
 
-The workflow creates the tag and release. **Do not create them in the Releases UI first.** Existing versions, tags, releases, and build numbers must not be reused.
+The workflow sets `CFBundleShortVersionString` from your input and `CFBundleVersion` to the last published Sparkle build number plus one. It stamps only the CI checkout: no version bump commit is pushed to `main`. The release tag identifies the source commit; the run log and appcast record the injected version and build. For a repository's first release, the build starts at 1. Missing or invalid existing metadata stops the run instead of restarting the counter.
 
-If publication fails after creating a draft, inspect that draft and its assets before deciding how to recover. Do not blindly rerun the workflow or replace signed public assets. No version-specific run recipe is kept here: the committed plist and release notes are the source of truth.
+The workflow creates the tag and release. **Do not create them in the Releases UI first.** Existing versions, tags, releases, and build numbers must not be reused. Only one official run can publish at a time. If `main` moves during the build, publication stops; start a new run after checking that no draft or tag was created.
+
+If publication fails after creating a draft, inspect that draft and its assets before deciding how to recover. Do not blindly rerun the workflow or replace signed public assets. Old Actions runs remain available as history even when their workflow file has been removed.
 
 ## Signing authority
 
@@ -28,7 +29,7 @@ Trusted maintainers with repository write access can run the workflow without th
 
 ## Local preparation and recovery
 
-With full Xcode and the dedicated Keychain entry:
+Prefer the workflow for official releases. For authorized local preparation or recovery, use full Xcode and the dedicated Keychain entry. Set the desired version and a strictly increasing build in your local `Config/App-Info.plist`, and supply nonempty `docs/releases/VERSION.md` before running:
 
 ```sh
 swift package resolve
@@ -37,7 +38,7 @@ bash Scripts/package-release.sh VERSION BUILD
 bash Scripts/sign-release.sh VERSION BUILD
 ```
 
-Replace `VERSION` and `BUILD` with the committed plist values. The explicit `distribution` mode produces `build/LimitRoom.app` with release updates enabled; ordinary local builds produce `LimitRoom Dev.app` with updates disabled. Packaging rejects development builds and refuses to overwrite `build/releases/VERSION`; preserve earlier staging output before rebuilding.
+Replace `VERSION` and `BUILD` with those local plist values. They may differ from the values committed in the tagged source because the workflow injects release metadata. The explicit `distribution` mode produces `build/LimitRoom.app` with release updates enabled; ordinary local builds produce `LimitRoom Dev.app` with updates disabled. Packaging rejects development builds and refuses to overwrite `build/releases/VERSION`; preserve earlier staging output before rebuilding. CI can generate missing notes between packaging and signing; local signing requires you to supply them.
 
 Local signing uses Keychain by default. CI supplies the private key only to the signing step, which passes it to Sparkle through stdin, not a command-line argument or exported file. Build, package, and sign do not publish. `Scripts/publish-release.sh VERSION BUILD COMMIT` is a separate authorized action requiring authenticated GitHub CLI.
 

@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rvrhiv/LimitRoom/actions/workflows/ci.yml"><img src="https://github.com/rvrhiv/LimitRoom/actions/workflows/ci.yml/badge.svg" alt="Build status"></a>
+  <a href="https://github.com/rvrhiv/LimitRoom/actions/workflows/release.yml"><img src="https://github.com/rvrhiv/LimitRoom/actions/workflows/release.yml/badge.svg" alt="Release status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-83d0b5" alt="MIT license"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-555555" alt="Requires macOS 14 or later">
 </p>

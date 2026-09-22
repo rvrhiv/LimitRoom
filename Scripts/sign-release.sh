@@ -12,6 +12,10 @@ limitroom_tools="$limitroom_root/.build/artifacts/sparkle/Sparkle/bin"
 limitroom_archive="$limitroom_output/LimitRoom-$limitroom_version.zip"
 limitroom_feed="$limitroom_output/appcast.xml"
 [[ -f "$limitroom_archive" && -x "$limitroom_tools/generate_appcast" ]]
+[[ -s "$limitroom_output/LimitRoom-$limitroom_version.md" ]] || {
+  echo 'Nonempty release notes are required before signing.' >&2
+  exit 1
+}
 
 limitroom_sign() {
   if [[ -n "${SPARKLE_PRIVATE_KEY:-}" ]]; then
