@@ -9,25 +9,29 @@ struct NotchHeaderView: View {
   var cameraLeading: CGFloat
   var height: CGFloat
   var open: (() -> Void)?
+  // Clear the expanded silhouette's 12-point shoulders on either outer edge.
+  private static let outerInset: CGFloat = 16
+  // Preserve the previous 18-point total inset, including on narrow wings.
+  private static let cameraInset: CGFloat = 2
 
   var body: some View {
     GeometryReader { proxy in
       HStack(spacing: 0) {
         slot(
           model.presentation.leftContent, components: model.presentation.leftComponents,
-          width: max(0, cameraLeading), alignment: .trailing)
+          width: max(0, cameraLeading), outerAlignment: .leading)
         Color.clear.frame(width: cameraWidth, height: height).accessibilityHidden(true)
         slot(
           model.presentation.rightContent,
           components: model.presentation.rightComponents,
-          width: max(0, proxy.size.width - cameraLeading - cameraWidth), alignment: .leading)
+          width: max(0, proxy.size.width - cameraLeading - cameraWidth), outerAlignment: .trailing)
       }
     }.frame(height: height).foregroundStyle(.white).preferredColorScheme(.dark)
   }
 
   private func slot(
     _ content: NotchSlotContent, components: IndicatorComponents, width: CGFloat,
-    alignment: Alignment
+    outerAlignment: HorizontalAlignment
   ) -> some View {
     let visible =
       width > 0 && content != .hidden
@@ -36,34 +40,47 @@ struct NotchHeaderView: View {
     return Group {
       if let open {
         Button(action: open) {
-          slotContent(content, components: components, width: width).contentShape(Rectangle())
+          slotContent(
+            content, components: components, width: width, outerAlignment: outerAlignment
+          ).contentShape(Rectangle())
         }.buttonStyle(.plain)
           .accessibilityHint(
             localized("Открыть квоты всех агентов", "Open allowances for all agents"))
       } else {
-        slotContent(content, components: components, width: width)
+        slotContent(content, components: components, width: width, outerAlignment: outerAlignment)
       }
     }
     .clipped()
-    .frame(width: width, height: height, alignment: alignment)
+    // Keep the equal-width wings attached to the camera throughout expansion.
+    .frame(
+      width: width, height: height, alignment: outerAlignment == .leading ? .trailing : .leading
+    )
     .opacity(visible ? 1 : 0)
     .allowsHitTesting(visible)
     .accessibilityHidden(!visible)
   }
 
   private func slotContent(
-    _ content: NotchSlotContent, components: IndicatorComponents, width: CGFloat
+    _ content: NotchSlotContent, components: IndicatorComponents, width: CGFloat,
+    outerAlignment: HorizontalAlignment
   ) -> some View {
-    VStack(spacing: 0) {
-      NotchSlotView(model: model, content: content, components: components)
+    let slotWidth = min(width, model.presentation.resolvedSideWidth)
+    let contentWidth = max(0, slotWidth - Self.outerInset - Self.cameraInset)
+    return VStack(alignment: outerAlignment, spacing: 0) {
+      NotchSlotView(
+        model: model, content: content, components: components,
+        alignment: outerAlignment, availableWidth: contentWidth)
       // Keep synthetic values visibly identified even with only a reset/name wing.
       // Never put this label in the physically obscured camera region.
       if model.isDemo {
         Text("DEMO").font(.system(size: 6, weight: .semibold)).foregroundStyle(.secondary)
       }
     }
-    .padding(.horizontal, 9)
-    .frame(width: min(width, model.presentation.resolvedSideWidth), height: height)
+    // Centering different-length values creates unequal visible outer margins.
+    .frame(width: contentWidth, alignment: Alignment(horizontal: outerAlignment, vertical: .center))
+    .padding(.leading, outerAlignment == .leading ? Self.outerInset : Self.cameraInset)
+    .padding(.trailing, outerAlignment == .trailing ? Self.outerInset : Self.cameraInset)
+    .frame(width: slotWidth, height: height)
   }
 }
 
@@ -71,6 +88,8 @@ private struct NotchSlotView: View {
   var model: AppModel
   var content: NotchSlotContent
   var components: IndicatorComponents
+  var alignment: HorizontalAlignment
+  var availableWidth: CGFloat
 
   private var stale: Bool {
     guard let pinned = model.pinned else { return false }
@@ -87,9 +106,9 @@ private struct NotchSlotView: View {
       case .quota:
         CompactIndicatorView(
           model: model, showsDemoLabel: false, components: components,
-          scale: min(1, (model.presentation.resolvedSideWidth - 18) / components.preferredWidth))
+          scale: min(1, max(1, availableWidth) / components.preferredWidth))
       case .reset where model.presentation.resetStyle != .hidden:
-        VStack(spacing: 1) {
+        VStack(alignment: alignment, spacing: 1) {
           Text(reset.primary).font(.system(size: 10, weight: .medium))
           if let secondary = reset.secondary {
             Text(secondary).font(.system(size: 9)).foregroundStyle(.secondary)

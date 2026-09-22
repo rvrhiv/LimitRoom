@@ -73,6 +73,7 @@ Quota refresh preferences are 1, 5, 30, or 60 minutes, defaulting to 5. One mode
 - One nonactivating AppKit panel integrates the notch and both wings. The camera area has no controls; all hover monitors are event-driven and removed on teardown.
 - Set the panel level **after** `isFloatingPanel`: AppKit otherwise resets it. It sits above status items but below native pop-up menus.
 - Animate native geometry and camera-relative offsets together; keep header content identity and width stable. Avoid a second implicit animation that makes text jump.
+- Visible notch wings share the configured width. Mirror their content alignment and outer insets; keep space for the expanded silhouette's shoulders without reducing the text's width budget.
 - Preserve the user's preferred mode through temporary menu-bar fallback. Ordinary Space changes reconcile visibility, not unconditionally destroy and recreate the panel.
 - Opening settings closes the expanded notch and its temporary hold. Fullscreen, sleep, inactive-session, and unavailable-display policies remain in effect.
 - Interactive rows have full hit areas, hover feedback, keyboard/accessibility labels, and English/Russian copy. Respect Reduce Motion; haptics are optional and device-dependent.
