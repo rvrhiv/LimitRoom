@@ -1,6 +1,12 @@
 import SwiftUI
 
 enum AppIdentity {
+  static var isDevelopmentBuild: Bool {
+    Bundle.main.object(forInfoDictionaryKey: "LimitRoomBuildFlavor") as? String != "distribution"
+  }
+  static var name: String {
+    Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "LimitRoom Dev"
+  }
   static var version: String {
     Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Dev"
   }
@@ -9,7 +15,7 @@ enum AppIdentity {
   }
   static var versionLabel: String { version == "Dev" ? version : "v\(version)" }
   static var versionDescription: String {
-    "LimitRoom \(version) · " + localized("сборка ", "build ") + build
+    "\(name) \(version) · " + localized("сборка ", "build ") + build
   }
 }
 
@@ -55,6 +61,6 @@ struct AppIconView: View {
         with: .color(Color(red: 185 / 255, green: 230 / 255, blue: 215 / 255).opacity(0.85)))
     }
     .aspectRatio(1, contentMode: .fit)
-    .accessibilityLabel("LimitRoom")
+    .accessibilityLabel(AppIdentity.name)
   }
 }

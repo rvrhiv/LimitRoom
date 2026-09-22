@@ -61,7 +61,11 @@ final class UpdateController: NSObject, SPUUpdaterDelegate {
   var canInstall: Bool { phase == .available && offerID != nil && canCheck && !isDemo }
   var status: String {
     switch phase {
-    case .disabled: localized("Канал обновлений не подключён", "Update channel is not configured")
+    case .disabled:
+      AppIdentity.isDevelopmentBuild
+        ? localized(
+          "Обновления отключены в Dev-сборке", "Updates are disabled in development builds")
+        : localized("Канал обновлений не подключён", "Update channel is not configured")
     case .idle: localized("Готово к проверке", "Ready to check")
     case .checking: localized("Проверяем обновления…", "Checking for updates…")
     case .available: localized("Доступно обновление", "Update available")
@@ -74,7 +78,7 @@ final class UpdateController: NSObject, SPUUpdaterDelegate {
   }
 
   func start() {
-    guard !isDemo, updater == nil else { return }
+    guard !isDemo, !AppIdentity.isDevelopmentBuild, updater == nil else { return }
     let bundle = Bundle.main
     guard bundle.object(forInfoDictionaryKey: "SUFeedURL") as? String == Self.feed,
       let key = bundle.object(forInfoDictionaryKey: "SUPublicEDKey") as? String,

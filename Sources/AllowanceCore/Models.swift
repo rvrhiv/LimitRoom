@@ -40,6 +40,17 @@ public struct SubscriptionInfo: Codable, Equatable, Sendable {
   public init() {}
 }
 
+/// Provider-reported extra resets, separate from automatic quota-window renewals.
+public struct QuotaResets: Codable, Equatable, Sendable {
+  public let availableCount: Int?
+  public let usedCount: Int?
+
+  public init(availableCount: Int? = nil, usedCount: Int? = nil) {
+    self.availableCount = availableCount.flatMap { $0 >= 0 ? $0 : nil }
+    self.usedCount = usedCount.flatMap { $0 >= 0 ? $0 : nil }
+  }
+}
+
 public struct AllowanceWindow: Identifiable, Codable, Equatable, Sendable {
   public let id: String
   public let title: String
@@ -80,7 +91,8 @@ public struct AgentSnapshot: Identifiable, Codable, Equatable, Sendable {
   public let accountLabel: String?
   public let plan: String?
   public let subscription: SubscriptionInfo?
-  public var codexTokenUsage: CodexTokenUsage?
+  public var tokenUsage: TokenUsage?
+  public var quotaResets: QuotaResets?
   public var windows: [AllowanceWindow]
   public let observedAt: Date?
   public var fetchedAt: Date
@@ -93,7 +105,7 @@ public struct AgentSnapshot: Identifiable, Codable, Equatable, Sendable {
     plan: String? = nil, subscription: SubscriptionInfo? = nil, windows: [AllowanceWindow] = [],
     observedAt: Date? = nil,
     fetchedAt: Date = .now, state: SourceState = .needsSetup, source: String = "",
-    detail: String? = nil, codexTokenUsage: CodexTokenUsage? = nil
+    detail: String? = nil, tokenUsage: TokenUsage? = nil, quotaResets: QuotaResets? = nil
   ) {
     self.agent = agent
     self.accountScope = accountScope
@@ -106,7 +118,8 @@ public struct AgentSnapshot: Identifiable, Codable, Equatable, Sendable {
     self.state = state
     self.source = source
     self.detail = detail
-    self.codexTokenUsage = codexTokenUsage
+    self.tokenUsage = tokenUsage
+    self.quotaResets = quotaResets
   }
 
   public func isFresh(at now: Date = .now, maxAge: TimeInterval = 600) -> Bool {

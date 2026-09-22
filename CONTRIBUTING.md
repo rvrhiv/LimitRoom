@@ -13,10 +13,12 @@ git clone https://github.com/rvrhiv/LimitRoom.git
 cd LimitRoom
 swift build
 bash Scripts/build-app.sh Release
-open build/LimitRoom.app --args --demo
+open 'build/LimitRoom Dev.app' --args --demo
 ```
 
-The app is written to `build/LimitRoom.app`; the script does not replace an installed copy. Demo mode is the default development preview: no agent reads, personal persistence, notifications, or update requests. Quit it before launching normally, and avoid running multiple collectors against the same history store.
+Both Debug and Release local builds are named **LimitRoom Dev**, including when built directly in Xcode. The script signs and verifies a fresh package before replacing `build/LimitRoom Dev.app`, then removes its redundant Debug/Release app products so only one runnable Dev bundle remains in the build folder. Quit the previous Dev instance first. Installed apps, build caches, and official distribution bundles are left untouched. Dev builds never start the release updater; official builds use the explicit `distribution` mode described in [Releasing](docs/releasing.md).
+
+Demo mode is the default development preview: no agent reads, personal persistence, notifications, or update requests. Dev and official builds still share the bundle identifier and data locations. Quit demo mode before launching normally, and avoid running multiple collectors against the same history store.
 
 Read [Architecture](docs/architecture.md) before changing a connector, account handling, history, scheduling, or native presentation. Keep new App files registered in the Xcode project as well as the Swift package. Use the existing localization helpers for both English and Russian.
 
@@ -53,10 +55,12 @@ Keep the [English](README.md) and [Russian](README.ru.md) READMEs equivalent. Pu
 Public images must use synthetic demo data. The existing renderer captures only LimitRoom's own views:
 
 ```sh
-build/LimitRoom.app/Contents/MacOS/LimitRoom --demo --render-preview "$PWD/build/preview.png" --surface notch-expanded --dark -AppleLanguages '(en)'
+'build/LimitRoom Dev.app/Contents/MacOS/LimitRoom' --demo --render-preview "$PWD/build/preview.png" --surface notch-expanded --dark -AppleLanguages '(en)'
 ```
 
-For statistics, use `--surface history` or `--surface menu --tab statistics`, with `--statistics-mode quota` or `tokens` and `--history-days 1`, `7`, `30`, or `90`. Other supported surfaces and options are defined in `App/PreviewRenderer.swift`. README assets live in `docs/assets/`; inspect them before committing. They are interface previews, not evidence of native screen interaction.
+For statistics, use `--surface history` or `--surface menu --tab statistics`, with `--statistics-mode quota` or `tokens` and `--history-days 1`, `3`, `7`, `30`, or `90`. Demo history includes synthetic work sessions, quiet periods, resets, and missing readings across 90 days. Other supported surfaces and options are defined in `App/PreviewRenderer.swift`. README assets live in `docs/assets/`; inspect them before committing. They are interface previews, not evidence of native screen interaction.
+
+Use `--surface agent-details --settings-agent codex` (or `claude` / `cursor`) to render an expanded synthetic card. Only Codex's demo reports remaining extra resets; the other cards demonstrate hidden unknown values.
 
 ## Submitting a change
 

@@ -35,6 +35,7 @@ struct DashboardView: View {
   var close: (() -> Void)?
   var openHistory: (() -> Void)?
   var openSettings: (() -> Void)?
+  var captureWindow: ((NSWindow) -> Void)?
   @Environment(\.openWindow) private var openWindow
   @Environment(\.dismiss) private var dismiss
   @Environment(\.colorScheme) private var scheme
@@ -83,12 +84,17 @@ struct DashboardView: View {
       height: style == .menuBar ? min(638, (NSScreen.main?.visibleFrame.height ?? 800) - 60) : nil
     )
     .tint(presentationAccent(scheme))
+    .background {
+      if let captureWindow {
+        PanelWindowReader(onWindowAvailable: captureWindow).allowsHitTesting(false)
+      }
+    }
   }
 
   private var header: some View {
     HStack(spacing: 8) {
       AppIconView().frame(width: 25, height: 25).accessibilityHidden(true)
-      Text("LimitRoom").font(.system(size: 13, weight: .semibold))
+      Text(AppIdentity.name).font(.system(size: 13, weight: .semibold))
       if model.isDemo {
         Text("DEMO").font(.system(size: 8, weight: .medium)).padding(.horizontal, 4).padding(
           .vertical, 2
@@ -117,13 +123,15 @@ struct DashboardView: View {
         Button(
           localized("Подключения и настройки…", "Connections and settings…"), action: showSettings)
         Divider()
-        Button(localized("Завершить LimitRoom", "Quit LimitRoom")) { NSApp.terminate(nil) }
+        Button(localized("Завершить \(AppIdentity.name)", "Quit \(AppIdentity.name)")) {
+          NSApp.terminate(nil)
+        }
       } label: {
         Image(systemName: "ellipsis").frame(width: 22, height: 24)
       }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         .help(localized("Действия", "Actions"))
       Button {
-        if let close { close() } else { dismiss() }
+        dismissPanel()
       } label: {
         Image(systemName: "xmark").frame(width: 22, height: 24)
       }
@@ -224,6 +232,7 @@ struct DashboardView: View {
       + latest.formatted(date: .omitted, time: .shortened)
   }
   private func showHistory() {
+    dismissPanel()
     if let openHistory {
       openHistory()
     } else {
@@ -232,6 +241,7 @@ struct DashboardView: View {
     }
   }
   private func showSettings() {
+    dismissPanel()
     if let openSettings {
       openSettings()
     } else {
@@ -239,6 +249,35 @@ struct DashboardView: View {
       NSApp.activate(ignoringOtherApps: true)
     }
   }
+  private func dismissPanel() {
+    if let close { close() } else { dismiss() }
+  }
+}
+
+private struct PanelWindowReader: NSViewRepresentable {
+  let onWindowAvailable: (NSWindow) -> Void
+
+  func makeNSView(context: Context) -> PanelWindowReaderView {
+    let view = PanelWindowReaderView()
+    view.onWindowAvailable = onWindowAvailable
+    return view
+  }
+
+  func updateNSView(_ nsView: PanelWindowReaderView, context: Context) {
+    nsView.onWindowAvailable = onWindowAvailable
+    if let window = nsView.window { onWindowAvailable(window) }
+  }
+}
+
+private final class PanelWindowReaderView: NSView {
+  var onWindowAvailable: ((NSWindow) -> Void)?
+
+  override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    if let window { onWindowAvailable?(window) }
+  }
+
+  override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 struct DashboardTabButtonStyle: ButtonStyle {

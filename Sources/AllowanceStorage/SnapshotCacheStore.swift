@@ -15,17 +15,19 @@ public struct SnapshotCacheStore: Sendable {
     .map { value in
       var snapshot = value
       snapshot.state = .stale
-      snapshot.codexTokenUsage = nil
+      snapshot.tokenUsage = nil
+      snapshot.quotaResets = nil
       return snapshot
     }
   }
   public func write(_ snapshots: [AgentSnapshot]) throws {
     try FileManager.default.createDirectory(
       at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-    // Daily history comes from Codex; do not cache another account's token totals.
+    // Account token history and reset entitlements are memory-only.
     let quotaOnly = snapshots.map { value in
       var snapshot = value
-      snapshot.codexTokenUsage = nil
+      snapshot.tokenUsage = nil
+      snapshot.quotaResets = nil
       return snapshot
     }
     try JSONEncoder().encode(quotaOnly).write(to: file, options: .atomic)

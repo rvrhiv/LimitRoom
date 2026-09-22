@@ -14,7 +14,7 @@ final class ApplicationWindows {
         contentRect: NSRect(x: 0, y: 0, width: 780, height: 560),
         styleMask: [.titled, .closable, .miniaturizable, .resizable],
         backing: .buffered, defer: false)
-      window.title = localized("История LimitRoom", "LimitRoom history")
+      window.title = localized("История \(AppIdentity.name)", "\(AppIdentity.name) history")
       window.contentView = NSHostingView(
         rootView: HistoryView(model: model).frame(minWidth: 690, minHeight: 470))
       window.isReleasedWhenClosed = false
@@ -31,7 +31,7 @@ final class ApplicationWindows {
         contentRect: NSRect(x: 0, y: 0, width: 840, height: 700),
         styleMask: [.titled, .closable, .miniaturizable, .resizable],
         backing: .buffered, defer: false)
-      window.title = localized("Настройки LimitRoom", "LimitRoom settings")
+      window.title = localized("Настройки \(AppIdentity.name)", "\(AppIdentity.name) settings")
       window.contentView = NSHostingView(
         rootView: SettingsView(model: model))
       window.contentMinSize = NSSize(width: 800, height: 640)

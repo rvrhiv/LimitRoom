@@ -32,12 +32,12 @@ With full Xcode and the dedicated Keychain entry:
 
 ```sh
 swift package resolve
-bash Scripts/build-app.sh Release
+bash Scripts/build-app.sh Release distribution
 bash Scripts/package-release.sh VERSION BUILD
 bash Scripts/sign-release.sh VERSION BUILD
 ```
 
-Replace `VERSION` and `BUILD` with the committed plist values. Packaging refuses to overwrite `build/releases/VERSION`; preserve earlier staging output before rebuilding.
+Replace `VERSION` and `BUILD` with the committed plist values. The explicit `distribution` mode produces `build/LimitRoom.app` with release updates enabled; ordinary local builds produce `LimitRoom Dev.app` with updates disabled. Packaging rejects development builds and refuses to overwrite `build/releases/VERSION`; preserve earlier staging output before rebuilding.
 
 Local signing uses Keychain by default. CI supplies the private key only to the signing step, which passes it to Sparkle through stdin, not a command-line argument or exported file. Build, package, and sign do not publish. `Scripts/publish-release.sh VERSION BUILD COMMIT` is a separate authorized action requiring authenticated GitHub CLI.
 

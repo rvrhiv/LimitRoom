@@ -23,7 +23,7 @@ final class AppModel {
   private(set) var quotaRefreshInterval: QuotaRefreshInterval
   var onboardingComplete: Bool
   var wantsLoginItem = true
-  var historyDays = 7
+  var historyDays = 3
   var statisticsMode = StatisticsMode.quota
   var displayDate = Date.now
   var cursorSignIn: CursorSignIn?
@@ -235,11 +235,14 @@ final class AppModel {
     let projection: HistoryProjectionKey
     let days: Int
   }
-  var codexTokenUsage: CodexTokenUsage? {
-    guard let snapshot = snapshots.first(where: { $0.agent == .codex }),
-      snapshot.accountScope != nil, snapshot.state == .ready || snapshot.state == .unsupported
-    else { return nil }
-    return snapshot.codexTokenUsage
+  var tokenHistories: [AgentTokenHistory] {
+    AgentID.allCases.map { agent in
+      let snapshot = snapshots.first { $0.agent == agent }
+      let confirmed =
+        snapshot?.accountScope != nil
+        && (snapshot?.state == .ready || snapshot?.state == .unsupported)
+      return AgentTokenHistory(agent: agent, usage: confirmed ? snapshot?.tokenUsage : nil)
+    }
   }
 
   func refresh() async {
@@ -568,8 +571,8 @@ final class AppModel {
     switch error as? ClaudeSetupError {
     case .helperMissing:
       localized(
-        "Запустите собранное приложение LimitRoom.app: в нём есть модуль подключения.",
-        "Run the built LimitRoom.app, which includes the connection helper.")
+        "Запустите собранное приложение \(AppIdentity.name).app: в нём есть модуль подключения.",
+        "Run the built \(AppIdentity.name).app, which includes the connection helper.")
     case .invalidSettings:
       localized(
         "Настройки Claude содержат некорректный JSON. Файл не изменён.",
@@ -689,65 +692,10 @@ final class AppModel {
   private func loadDemo() {
     let now = Date.now
     displayDate = now
-    let values: [(AgentID, String, Double, Double)] = [
-      (.codex, "Pro", 32, 56), (.claude, "Max", 18, 37), (.cursor, "Pro", 45, 24),
-    ]
-    snapshots = values.map { agent, plan, session, period in
-      AgentSnapshot(
-        agent: agent, accountScope: "demo-\(agent.rawValue)", accountLabel: "Demo account",
-        plan: plan,
-        windows: [
-          AllowanceWindow(
-            id: "session", title: agent == .cursor ? "Cursor Models" : "5h", usedPercent: session,
-            durationMinutes: 300, resetsAt: now.addingTimeInterval(9900), kind: .fixed),
-          AllowanceWindow(
-            id: "period", title: agent == .cursor ? "Other Models · 30d" : "7d",
-            usedPercent: period,
-            durationMinutes: agent == .cursor ? 43200 : 10080,
-            resetsAt: now.addingTimeInterval(250000), kind: .fixed),
-        ],
-        observedAt: now, state: .ready, source: "Demo",
-        codexTokenUsage: agent == .codex
-          ? CodexTokenUsage(
-            state: .ready, observedAt: now, lifetimeTokens: 18_460_200,
-            days: [420_000, 685_300, 0, 940_200, 538_000, 781_400, 312_800].enumerated().map {
-              offset, tokens in
-              let formatter = DateFormatter()
-              formatter.locale = Locale(identifier: "en_US_POSIX")
-              formatter.calendar = Calendar(identifier: .gregorian)
-              formatter.timeZone = TimeZone(secondsFromGMT: 0)
-              formatter.dateFormat = "yyyy-MM-dd"
-              return CodexTokenDay(
-                day: formatter.string(from: now.addingTimeInterval(Double(offset - 6) * 86400)),
-                tokens: Int64(tokens))
-            }) : nil)
-    }
+    let demo = DemoHistory.make(now: now)
+    snapshots = demo.snapshots
+    samples = demo.samples
     selection = WindowSelection(agent: .codex, windowID: "period")
-    for snapshot in snapshots {
-      chartSelections[snapshot.agent] = "period"
-      guard let window = snapshot.windows.last else { continue }
-      for tick in 0...2016 {
-        // Synthetic gap and reset make the chart's continuity rules visible.
-        if snapshot.agent == .claude, (1240...1300).contains(tick) { continue }
-        let date = now.addingTimeInterval(Double(tick - 2016) * 300)
-        let resetTick = 980
-        let hasDemoReset = snapshot.agent == .codex
-        let beforeReset = hasDemoReset && tick < resetTick
-        let cycle =
-          beforeReset
-          ? String(
-            Int64(now.addingTimeInterval(Double(resetTick - 2016) * 300).timeIntervalSince1970))
-          : window.cycleKey
-        let used =
-          beforeReset
-          ? 45 + Double(tick) * 0.05
-          : max(0, (window.usedPercent ?? 0) - Double(2016 - tick) * 0.045)
-        samples.append(
-          HistorySample(
-            agent: snapshot.agent, accountScope: snapshot.accountScope!, windowID: window.id,
-            windowTitle: window.title, cycleKey: cycle, plan: snapshot.plan,
-            observedAt: date, usedPercent: used))
-      }
-    }
+    chartSelections = Dictionary(uniqueKeysWithValues: AgentID.allCases.map { ($0, "period") })
   }
 }

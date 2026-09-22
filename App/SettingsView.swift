@@ -36,7 +36,7 @@ struct SettingsView: View {
         HStack(spacing: 10) {
           AppIconView().frame(width: 32, height: 32)
           VStack(alignment: .leading, spacing: 2) {
-            Text("LimitRoom").font(.headline)
+            Text(AppIdentity.name).font(.headline)
             Text(AppIdentity.versionLabel).font(.caption).foregroundStyle(.secondary)
           }
         }.padding(.horizontal, 10).padding(.top, 20).padding(.bottom, 18)

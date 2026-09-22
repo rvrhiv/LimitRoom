@@ -7,6 +7,7 @@ final class PresentationCoordinator {
   @ObservationIgnored private let model: AppModel
   @ObservationIgnored private let windows: ApplicationWindows
   @ObservationIgnored private var notch: NotchPanelController?
+  @ObservationIgnored private weak var menuBarPanel: NSWindow?
   @ObservationIgnored private var observations: [(NotificationCenter, NSObjectProtocol)] = []
   @ObservationIgnored private var presentationObservation: NSKeyValueObservation?
   @ObservationIgnored private var settleTask: Task<Void, Never>?
@@ -83,10 +84,25 @@ final class PresentationCoordinator {
     notch = nil
   }
 
-  func openHistory() { windows.openHistory() }
+  func openHistory() {
+    presentAuxiliaryWindow { windows.openHistory() }
+  }
   func openSettings() {
+    presentAuxiliaryWindow { windows.openSettings() }
+  }
+
+  func captureMenuBarPanel(_ window: NSWindow) {
+    menuBarPanel = window
+  }
+
+  func dismissMenuBarPanel() {
+    menuBarPanel?.orderOut(nil)
+  }
+
+  private func presentAuxiliaryWindow(_ present: () -> Void) {
     notch?.close()
-    windows.openSettings()
+    dismissMenuBarPanel()
+    present()
   }
 
   private func observe(

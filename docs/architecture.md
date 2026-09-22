@@ -47,6 +47,8 @@ An explicit, reversible setup service installs a status-line bridge. It preserve
 
 Scope is fixed for each bridge invocation. Replayed or regressing input must not manufacture fresh observations. Claude does not supply reliable account identity here, so the user explicitly rotates the local scope after changing accounts. GUI environment inheritance and project-level status-line overrides can affect setup.
 
+This connection does not provide account token history. Context-window size, the latest request's counters, and estimated session cost must not be presented as total consumed tokens.
+
 ### Cursor
 
 Local-session access requires separate consent. Read only the authentication record in Cursor's SQLite store, with read-only WAL/SHM handling and no writable fallback. Keep the session in memory; do not refresh it or persist it in LimitRoom.
@@ -55,13 +57,29 @@ Only fixed HTTPS usage and identity endpoints on `cursor.com` may receive that s
 
 The isolated WebKit sign-in is an explicitly selected alternative, not an automatic fallback. It never imports another app's cookies. Project personal usage only; neither team Admin APIs nor averages of unrelated percentages represent a personal allowance. The private dashboard contract can change independently of LimitRoom.
 
+Optional token history uses the personal `get-filtered-usage-events` endpoint through that same selected session. Aggregate validated input, output and cache counters into UTC days for the last 90 days. Accept only a complete bounded response: at most 20 pages of 1,000 events, 4 MiB per page, and no unexplained count mismatch. Remove exact page-boundary overlaps only; incomplete history is unavailable, not a partial total. Recheck account identity after the read. A 15-minute memory cache keeps its original expiry on cache hits and is invalidated on account/source changes; no event payloads or credentials are persisted.
+
+### Additional quota-reset entitlements
+
+This capability means discrete provider-granted extra resets, not automatic quota cycles or token/dollar credit balances.
+
+- **Codex:** the official [`account/rateLimits/read`](https://learn.chatgpt.com/docs/app-server#6-rate-limits-chatgpt) response can include `rateLimitResetCredits.availableCount`; it is authoritative even when the optional available-credit rows are capped. The connector validates that count through the existing connection and confirms account identity before publishing it. The contract provides no complete redemption history, so used cannot be derived from row statuses or availability deltas.
+- **Claude Code:** the supported [status-line schema](https://code.claude.com/docs/en/statusline#rate-limit-usage) exposes `rate_limits.five_hour`, `seven_day`, and gateway `spend_limit` percentages and reset times. The bridge reads the first two. It exposes no discrete extra-reset count; paid usage credits are a different, consumption-priced mechanism. Either count therefore needs a new documented provider source, not credential extraction or an undocumented OAuth endpoint.
+- **Cursor:** the official [usage contract](https://cursor.com/help/models-and-usage/usage-limits) describes monthly included pools, remaining allowance, and on-demand usage. The current private-dashboard connector decodes cycle dates plus plan/on-demand usage and limits, not reset entitlements. Neither count is available from the current connector; a new supported provider field or API would be required.
+
+`QuotaResets` carries optional provider-reported available and used counts. Show each row in subscription details only when its nonnegative value and a fresh, scoped snapshot are available; hide unknown or stale values rather than showing placeholders. A reported zero is valid. Keep entitlement counts in memory only, outside the latest-reading cache and history. Never derive usage from availability changes, automatic cycles, or capped detail rows, and never redeem a reset from the monitor.
+
 ## History and scheduling
 
 SQLite has one writer actor, versioned transactional migrations, and 90-day retention. Deduplicate observations by agent, account, window, and source time.
 
 Quota charts show **remaining allowance on a fixed 0–100% scale**, calculated from existing observations as `clamp(100 − usedPercent, 0, 100)`. No database migration is needed. Chart selection is independent of the pinned window and limited to the currently confirmed account.
 
-Connect only observations of the same account, window, plan, and known cycle. A gap longer than the greater of 10 minutes or 1.5 times the configured refresh interval breaks continuity, as do replenishment and corrections. Unknown cycles remain individual observations. Mark a new cycle only after the previous reset deadline passed; never invent a 100% observation. Cache the grouped history projection and use time-bucket extrema plus cycle markers for dense chart rendering, retaining original segment IDs so gaps cannot be joined. Monotone interpolation smooths each displayed segment without overshooting its readings or bridging breaks. Hover values use the complete actual observations. Quota fractions do not measure tokens, cost, or model efficiency.
+Solid segments contain comparable observations of one account, window, plan, and known cycle. A gap longer than the greater of 10 minutes or 1.5 times the refresh interval, replenishment, or a correction starts a new segment. Dashed visual bridges connect their actual endpoints without claiming measurements in between; unknown-cycle series are dashed too. Never bridge different accounts, windows, or plans. Mark a new cycle only after the previous reset deadline passed; never invent a 100% observation.
+
+Cache the grouped projection. For a calmer curve, keep one real observation near each time-bucket midpoint plus every segment boundary (32 buckets in the compact panel, 72 in full history). Monotone interpolation cannot overshoot the displayed observations; reset bridges stay linear. Hover and exports retain the complete original readings. Quota fractions do not measure tokens, cost, or model efficiency.
+
+`TokenUsage` is a provider-neutral optional part of a snapshot. The Tokens chart compares daily counts on one calendar axis for 1, 3, 7, 30, or 90 days, ending on the latest reported day across sources. Counts are not cumulative; missing days stay unknown and any connecting line is dashed. Keep source-day and UTC labels explicit, do not turn counts into quota or cost, and never persist token history to the quota database or snapshot cache.
 
 Quota refresh preferences are 1, 5, 30, or 60 minutes, defaulting to 5. One model-owned 30-second display clock checks whether collection is due; manual refresh and wake use the same coalescing and rate guards. Changing preferences must not create another timer. App-update checks are independent.
 
@@ -75,7 +93,7 @@ Quota refresh preferences are 1, 5, 30, or 60 minutes, defaulting to 5. One mode
 - Animate native geometry and camera-relative offsets together; keep header content identity and width stable. Avoid a second implicit animation that makes text jump.
 - Visible notch wings share the configured width. Mirror their content alignment and outer insets; keep space for the expanded silhouette's shoulders without reducing the text's width budget.
 - Preserve the user's preferred mode through temporary menu-bar fallback. Ordinary Space changes reconcile visibility, not unconditionally destroy and recreate the panel.
-- Opening settings closes the expanded notch and its temporary hold. Fullscreen, sleep, inactive-session, and unavailable-display policies remain in effect.
+- Opening an auxiliary window closes the originating menu panel or expanded notch and clears the temporary pin. Capture the exact menu host window rather than hiding arbitrary app windows; dismiss it before presenting the target. Compact indicators remain visible. Fullscreen, sleep, inactive-session, and unavailable-display policies remain in effect.
 - Interactive rows have full hit areas, hover feedback, keyboard/accessibility labels, and English/Russian copy. Respect Reduce Motion; haptics are optional and device-dependent.
 
 ## Updates and extension

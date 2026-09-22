@@ -50,10 +50,12 @@ Cursor's dashboard endpoints are private and may change. Personal and team pools
 
 Select a quota row in an agent card to pin that exact window. Both presentation modes use this selection; browsing another card or the Statistics tab does not change it. Expand **Subscription and source** for the facts the agent actually reports.
 
+Extra **Resets remaining** and **Resets used** appear there only when the source reports a count and the reading is fresh. Codex can report remaining resets; its current interface does not provide a complete used count. Claude Code and Cursor do not supply either count through their current connections, so those rows stay hidden. These are additional resets, not automatic quota renewals. LimitRoom does not spend them.
+
 In **Settings → Appearance**:
 
 - **Menu bar:** click the indicator to open the panel; choose the agent icon, ring, percentage, or a combination.
-- **Near the camera:** hover over the notch to open all cards. Use the pin to keep the panel open after the pointer leaves. Opening settings closes it and clears the temporary pin.
+- **Near the camera:** hover over the notch to open all cards. Use the pin to keep the panel open after the pointer leaves. Opening settings, full history, or another window dismisses the panel and clears the temporary pin; the compact indicator stays visible. The menu-bar panel also closes when opening another window.
 - Configure each notch side to show the selected quota, its reset, its window name, or nothing. Both sides refer to the same quota. Reset time can be relative, an exact date/time, or hidden.
 
 The menu bar is the default and the fallback when a supported built-in notched display is unavailable. The notch hides for fullscreen and session transitions. Its wings can cover menu-bar items because macOS does not reserve space for them; reduce their width, hide a side, or use menu-bar mode. Haptics depend on a supported trackpad.
@@ -62,13 +64,15 @@ In **General**, select a quota refresh interval of 1, 5, 30, or 60 minutes (defa
 
 ## History and meaning
 
-**Quota remaining** shows how much allowance was left at each observation, on a fixed **0–100%** scale. A falling line means less headroom. Select a window for each agent independently of the pinned indicator; hover to see its exact reading, window, and time. Curves visually connect comparable readings without changing their values. A diamond marks the first reading in a new cycle, not a measured reset instant. Gaps are not filled with invented readings. Different plans have different capacities: equal percentages do not mean equal tokens or cost.
+**Quota remaining** shows how much allowance was left on a fixed **0–100%** scale. A falling line means less headroom. Charts open on **3 days** by default; choose 24 hours, 3, 7, 30, or 90 days and select a window for each agent independently of the pinned indicator. The smoothed trend uses fewer display points; hover still shows exact original readings, their window, and time. Dashed lines bridge pauses, corrections, or cycle changes; they do not mean measurements were collected in between. A diamond marks the first reading after a reset, not a measured reset instant. Unknown cycles are dashed, and different accounts or plans are never joined. Equal percentages on different plans do not mean equal tokens or cost.
 
-**Codex tokens** shows daily account activity reported by the official Codex App Server, plus a lifetime total when available. This is not limited to this Mac and does not require reading conversations. The selected period ends on the latest day returned by Codex, with dates kept as the source reports them. Totals cover only reported days; missing days are unknown, while an explicit zero is shown as zero. Tokens cannot be converted into subscription quota percentages or prices. Claude and Cursor token statistics are not included yet.
+**Tokens** compares daily account activity on one chart, with a color and total for each supported agent. It shows tokens spent per day, not a running total; these sources do not provide an hour-by-hour timeline. Codex uses the official App Server and Cursor uses its personal dashboard history. Claude's current quota connection does not provide token history, so its total remains unavailable rather than zero.
 
-Token statistics require a supporting Codex version and account. Older versions or unavailable responses leave this mode unavailable without breaking the quota display. Counts are fetched with quota refreshes and stay in memory only; clearing or exporting local quota history does not delete or export Codex's account activity.
+The period ends on the latest reported day across sources. Codex keeps source calendar dates; Cursor days use UTC. Today may be incomplete. Totals cover only reported days; missing days are unknown, while an explicit zero is zero. Hover for exact counts. A lifetime total appears only when the source provides it. Account activity is not limited to this Mac and requires no conversation reads; token counts are not converted to quota percentages or prices.
 
-Local quota history is retained for 90 days and can be exported as CSV/JSON or cleared from the history window. Resets, account/plan changes, corrections, and long gaps break chart continuity. No continuous quota history is collected while LimitRoom is closed, though the Claude helper can update its latest local reading.
+Unavailable or unsupported token responses do not break the quota display. Counts stay in memory only; clearing or exporting local quota history does not delete or export provider token activity. Cursor reuses token history for up to 15 minutes, then fetches it on the next quota refresh. Its optional history can be unavailable for a large or incomplete response even when its quota is visible.
+
+Local quota history is retained for 90 days and can be exported as CSV/JSON or cleared from the history window. Older observations are deleted from SQLite when history is read or new readings are recorded, including before export. If LimitRoom was closed, expiration runs the next time it opens and reads history. No quota history is collected while LimitRoom is closed, though the Claude helper can update its latest local reading.
 
 ## Data and privacy
 

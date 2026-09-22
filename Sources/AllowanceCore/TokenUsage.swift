@@ -1,8 +1,8 @@
 import Foundation
 
-/// Account-wide activity reported by Codex, independent of subscription quota.
+/// Account-wide activity reported by a provider, independent of subscription quota.
 /// A missing day is unknown, not zero. Day IDs retain the provider's calendar labels.
-public struct CodexTokenDay: Codable, Equatable, Identifiable, Sendable {
+public struct TokenDay: Codable, Equatable, Identifiable, Sendable {
   public var id: String { day }
   public let day: String
   public let tokens: Int64
@@ -13,26 +13,31 @@ public struct CodexTokenDay: Codable, Equatable, Identifiable, Sendable {
   }
 }
 
-public struct CodexTokenUsage: Codable, Equatable, Sendable {
+public struct TokenUsage: Codable, Equatable, Sendable {
   public enum State: String, Codable, Sendable {
     case ready, unsupported, unavailable
+  }
+  public enum DayBoundary: String, Codable, Sendable {
+    case provider, utc
   }
   public let state: State
   public let observedAt: Date?
   public let lifetimeTokens: Int64?
-  public let days: [CodexTokenDay]?
+  public let days: [TokenDay]?
+  public let dayBoundary: DayBoundary
 
   public init(
     state: State, observedAt: Date? = nil, lifetimeTokens: Int64? = nil,
-    days: [CodexTokenDay]? = nil
+    days: [TokenDay]? = nil, dayBoundary: DayBoundary = .provider
   ) {
     self.state = state
     self.observedAt = observedAt
     self.lifetimeTokens = lifetimeTokens
     self.days = days
+    self.dayBoundary = dayBoundary
   }
 
-  public static func total(for days: [CodexTokenDay]) -> Int64? {
+  public static func total(for days: [TokenDay]) -> Int64? {
     guard !days.isEmpty else { return nil }
     var total: Int64 = 0
     for day in days {

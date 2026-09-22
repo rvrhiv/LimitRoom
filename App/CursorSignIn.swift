@@ -13,6 +13,7 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
       && webView.url?.path.hasPrefix("/dashboard") == true
   }
   private var lastGood: AgentSnapshot?
+  private var tokenCache: CursorTokenHistoryCache?
   var didConnect: (() -> Void)?
 
   init(message: @escaping (String) -> Void) {
@@ -26,7 +27,7 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
       styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false
     )
     super.init()
-    window.title = "Cursor — LimitRoom"
+    window.title = "Cursor — \(AppIdentity.name)"
     window.isReleasedWhenClosed = false
     window.contentView = webView
     webView.navigationDelegate = self
@@ -57,47 +58,24 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
   func readSnapshot() async -> AgentSnapshot? {
     guard trustedDashboard else { return nil }
     // Executed in an isolated JS world. Cookies remain entirely inside this WebKit profile.
-    let script = """
-      if (location.origin !== 'https://cursor.com' || !location.pathname.startsWith('/dashboard')) return null;
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 12000);
-      try {
-        const read = async (path) => {
-          const response = await fetch(path, {credentials:'same-origin', cache:'no-store',
-            redirect:'error', headers:{Accept:'application/json'}, signal:controller.signal});
-          if (response.status === 401 || response.status === 403) throw new Error('signed_out');
-          if (!response.ok) throw new Error('unavailable');
-          const text = await response.text();
-          if (text.length > 65536) throw new Error('schema');
-          return JSON.parse(text);
-        };
-        const [usage, me] = await Promise.all([read('/api/usage-summary'), read('/api/auth/me')]);
-        const plan = usage.individualUsage?.plan;
-        const spend = usage.individualUsage?.onDemand;
-        const overall = usage.individualUsage?.overall;
-        return JSON.stringify({usage: {
-          billingCycleStart:usage.billingCycleStart, billingCycleEnd:usage.billingCycleEnd,
-          membershipType:usage.membershipType, isUnlimited:usage.isUnlimited,
-          individualUsage: {
-            plan: plan ? {enabled:plan.enabled, used:plan.used, limit:plan.limit,
-              autoPercentUsed:plan.autoPercentUsed, apiPercentUsed:plan.apiPercentUsed,
-              totalPercentUsed:plan.totalPercentUsed} : null,
-            onDemand: spend ? {enabled:spend.enabled, used:spend.used, limit:spend.limit} : null,
-            overall: overall ? {enabled:overall.enabled, used:overall.used, limit:overall.limit} : null
-          }}, identity:{sub:me.sub, email:me.email}});
-      } catch (e) { return e.message === 'signed_out' ? 'signed_out' : 'unavailable'; }
-      finally { clearTimeout(timer); }
-      """
+    let now = Date.now
     do {
       let result = try await webView.callAsyncJavaScript(
-        script, arguments: [:], in: nil, contentWorld: .defaultClient)
+        CursorTokenHistory.webKitScript,
+        arguments: ["cachedSubject": tokenCache?.subject(at: now) ?? ""], in: nil,
+        contentWorld: .defaultClient)
       guard trustedDashboard, let json = result as? String else { return failed(.unavailable) }
       if json == "signed_out" {
         lastGood = nil
+        tokenCache = nil
         return failed(.signedOut)
       }
       guard json != "unavailable" else { return failed(.unavailable) }
-      let snapshot = try CursorProjection.snapshot(from: Data(json.utf8))
+      let data = Data(json.utf8)
+      var snapshot = try CursorProjection.snapshot(from: data)
+      let history = CursorTokenHistory.decodeWebResult(from: data, cached: tokenCache, now: now)
+      snapshot.tokenUsage = history.usage
+      tokenCache = history.cache
       lastGood = snapshot
       message?(
         snapshot.state == .ready
@@ -110,6 +88,7 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
       return snapshot
     } catch ConnectorError.signedOut {
       lastGood = nil
+      tokenCache = nil
       return failed(.signedOut)
     } catch { return failed(.unavailable) }
   }
@@ -124,11 +103,13 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
     message = nil
     didConnect = nil
     lastGood = nil
+    tokenCache = nil
     webView.stopLoading()
     window.orderOut(nil)
   }
   func signOut() async {
     lastGood = nil
+    tokenCache = nil
     webView.stopLoading()
     webView.loadHTMLString("", baseURL: nil)
     await webView.configuration.websiteDataStore.removeData(
@@ -146,6 +127,7 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
       previous.state = .stale
       return previous
     }
+    if state == .signedOut { tokenCache = nil }
     return AgentSnapshot(agent: .cursor, state: state, source: "Cursor Dashboard")
   }
 }

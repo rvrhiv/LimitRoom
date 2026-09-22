@@ -4,12 +4,29 @@ import SwiftUI
 
 /// Cached presentation projection; full observations remain available for hover.
 struct QuotaChartData {
+  struct Bridge: Identifiable {
+    let previous: QuotaHistoryPoint
+    let next: QuotaHistoryPoint
+    var id: String { "bridge/\(previous.id)/\(next.id)" }
+  }
   let displayPoints: [QuotaHistoryPoint]
   let agentPoints: [AgentID: [QuotaHistoryPoint]]
+  let bridges: [Bridge]
 
   init(points: [QuotaHistoryPoint], compact: Bool) {
-    displayPoints = TrendCalculator.chartPoints(from: points, maximumBuckets: compact ? 150 : 400)
+    displayPoints = TrendCalculator.chartPoints(from: points, maximumBuckets: compact ? 32 : 72)
     agentPoints = Dictionary(grouping: points, by: { $0.sample.agent })
+    bridges = agentPoints.values.flatMap { series in
+      zip(series, series.dropFirst()).compactMap { previous, next -> Bridge? in
+        guard next.transition != nil,
+          previous.sample.accountScope == next.sample.accountScope,
+          previous.sample.windowID == next.sample.windowID,
+          previous.sample.plan == next.sample.plan,
+          previous.sample.observedAt < next.sample.observedAt
+        else { return nil }
+        return Bridge(previous: previous, next: next)
+      }
+    }
   }
 
   func latest(_ agent: AgentID, in range: ClosedRange<Date>) -> QuotaHistoryPoint? {
@@ -34,7 +51,7 @@ enum StatisticsMode: String, CaseIterable {
   var title: String {
     switch self {
     case .quota: localized("Остаток квоты", "Quota remaining")
-    case .tokens: localized("Токены Codex", "Codex tokens")
+    case .tokens: localized("Токены", "Tokens")
     }
   }
 }
@@ -47,6 +64,7 @@ struct StatisticsPeriodPicker: View {
         model.statisticsMode == .quota
           ? localized("24 часа", "24 hours") : localized("Последний день", "Latest day")
       ).tag(1)
+      Text(localized("3 дня", "3 days")).tag(3)
       Text(localized("7 дней", "7 days")).tag(7)
       Text(localized("30 дней", "30 days")).tag(30)
       Text(localized("90 дней", "90 days")).tag(90)
@@ -74,13 +92,13 @@ struct StatisticsContentView: View {
         }
         Text(
           localized(
-            "Остаток от 0 до 100%. Разрыв — нет сопоставимых измерений; ромб — первое показание после смены цикла. Окна графика не меняют индикатор.",
-            "Remaining allowance, from 0 to 100%. Gaps mean no comparable readings; a diamond marks the first reading in a new cycle. Chart windows do not change your indicator."
+            "Сглаженный остаток квоты, 0–100%. Пунктир — пауза, изменение показаний или неизвестный цикл; ромб — первое показание после сброса. Точные измерения — при наведении. Окна графика не меняют индикатор.",
+            "Smoothed quota remaining, 0–100%. Dashed lines bridge pauses, adjustments or an unknown cycle; a diamond marks the first reading after a reset. Hover for exact observations. Chart windows do not change your indicator."
           )
         ).font(.system(size: compact ? 10 : 12)).foregroundStyle(.secondary)
       case .tokens:
-        CodexTokenChart(
-          usage: model.codexTokenUsage, dayCount: model.historyDays,
+        TokenHistoryChart(
+          histories: model.tokenHistories, dayCount: model.historyDays,
           now: model.displayDate, maximumAge: max(600, model.quotaRefreshInterval.duration * 1.5),
           compact: compact)
       }
@@ -174,7 +192,11 @@ private struct QuotaHistoryChart: View {
             y: .value(localized("Осталось", "Remaining"), point.remainingPercent),
             series: .value("segment", point.segment)
           ).foregroundStyle(by: .value(localized("Агент", "Agent"), point.sample.agent.title))
-            .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
+            .lineStyle(
+              StrokeStyle(
+                lineWidth: 2.3, lineCap: .round, lineJoin: .round,
+                dash: point.sample.cycleKey == nil ? [4, 4] : [])
+            )
             .interpolationMethod(.monotone)
           if point.beginsNewCycle || markedPointIDs.contains(point.id) {
             PointMark(
@@ -190,6 +212,22 @@ private struct QuotaHistoryChart: View {
                   + (point.beginsNewCycle ? localized(" · Новый цикл", " · New cycle") : ""))
           }
         }
+        ForEach(data.bridges) { bridge in
+          if range.contains(bridge.previous.sample.observedAt),
+            range.contains(bridge.next.sample.observedAt)
+          {
+            ForEach([bridge.previous, bridge.next]) { point in
+              LineMark(
+                x: .value(localized("Время", "Time"), point.sample.observedAt),
+                y: .value(localized("Осталось", "Remaining"), point.remainingPercent),
+                series: .value("segment", bridge.id)
+              ).foregroundStyle(by: .value(localized("Агент", "Agent"), point.sample.agent.title))
+                .lineStyle(StrokeStyle(lineWidth: 1.6, lineCap: .round, dash: [4, 4]))
+                .interpolationMethod(.linear)
+                .accessibilityHidden(true)
+            }
+          }
+        }
         ForEach(hoveredPoints) { point in
           PointMark(
             x: .value(localized("Время", "Time"), point.sample.observedAt),
@@ -203,7 +241,6 @@ private struct QuotaHistoryChart: View {
       }
       .chartXScale(domain: range)
       .chartYScale(domain: 0...100)
-      .chartPlotStyle { $0.clipped() }
       .chartYAxis {
         AxisMarks(position: .leading, values: [0, 25, 50, 75, 100]) { value in
           AxisGridLine()
@@ -211,7 +248,18 @@ private struct QuotaHistoryChart: View {
         }
       }
       .chartXAxis {
-        AxisMarks(values: .automatic(desiredCount: compact ? 3 : 6)) { value in
+        AxisMarks(
+          values: range.upperBound.timeIntervalSince(range.lowerBound) <= 86400
+            ? .automatic(desiredCount: compact ? 3 : 6)
+            : .stride(
+              by: .day,
+              count: max(
+                1,
+                Int(
+                  ceil(
+                    range.upperBound.timeIntervalSince(range.lowerBound) / 86400
+                      / Double(compact ? 3 : 6)))))
+        ) { value in
           AxisGridLine()
           AxisValueLabel(anchor: axisLabelAnchor(value)) {
             if let date = value.as(Date.self) {
@@ -274,189 +322,7 @@ private struct QuotaHistoryChart: View {
   }
 }
 
-private struct CodexTokenChart: View {
-  let usage: CodexTokenUsage?
-  let dayCount: Int
-  let now: Date
-  let maximumAge: TimeInterval
-  let compact: Bool
-  @State private var hoveredDay: String?
-
-  private var days: [CodexTokenDay] {
-    guard let days = usage?.days, let last = days.last?.day,
-      let end = Self.dayFormatter.date(from: last)
-    else { return [] }
-    let start = Self.dayFormatter.string(
-      from: end.addingTimeInterval(-Double(dayCount - 1) * 86400))
-    return days.filter { $0.day >= start && $0.day <= last }
-  }
-  private var dayLabels: [String] {
-    guard let last = usage?.days?.last?.day, let end = Self.dayFormatter.date(from: last) else {
-      return []
-    }
-    return (0..<dayCount).map {
-      Self.dayFormatter.string(from: end.addingTimeInterval(Double($0 - dayCount + 1) * 86400))
-    }
-  }
-  private static var dayFormatter: DateFormatter {
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.calendar = Calendar(identifier: .gregorian)
-    formatter.timeZone = TimeZone(secondsFromGMT: 0)
-    formatter.dateFormat = "yyyy-MM-dd"
-    return formatter
-  }
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 14) {
-      if let usage, usage.state == .ready {
-        HStack(alignment: .firstTextBaseline, spacing: 18) {
-          tokenTotal(
-            CodexTokenUsage.total(for: days), title: localized("За доступные дни", "Reported days"))
-          if let lifetime = usage.lifetimeTokens {
-            Spacer(minLength: 0)
-            tokenTotal(lifetime, title: localized("За всё время", "All time"))
-          }
-        }
-        if !days.isEmpty {
-          chart
-          Text(
-            "\(dayLabels.first ?? "") — \(dayLabels.last ?? "") · "
-              + localized(
-                "Дней с данными: \(days.count)/\(dayCount)",
-                "Days reported: \(days.count)/\(dayCount)")
-          ).font(.caption).foregroundStyle(.secondary)
-        } else {
-          message(localized("Codex не вернул дневную историю", "Codex returned no daily history"))
-        }
-        if let observed = usage.observedAt {
-          Text(
-            (now.timeIntervalSince(observed) > maximumAge
-              ? localized("Устаревшие данные · ", "Stale data · ")
-              : localized("Получено · ", "Fetched · "))
-              + observed.formatted(date: .abbreviated, time: .shortened)
-          ).font(.caption).foregroundStyle(.secondary)
-        }
-      } else {
-        message(
-          usage?.state == .unsupported
-            ? localized(
-              "Эта версия Codex не поддерживает статистику токенов",
-              "This Codex version does not support token statistics")
-            : localized("Статистика токенов недоступна", "Token statistics are unavailable"))
-        Text(
-          localized(
-            "Нужны актуальный Codex и подключённый аккаунт ChatGPT. Если квота уже видна, попробуйте обновить показания позже.",
-            "An up-to-date Codex and a connected ChatGPT account are needed. If quotas already appear, try refreshing again later."
-          )
-        ).font(.caption).foregroundStyle(.secondary)
-      }
-      Text(
-        localized(
-          "Активность аккаунта по данным Codex, не только этого Mac. Период заканчивается последним днём в ответе Codex; даты сохранены как у источника. Пропуски не считаются нулём. Токены не переводятся в проценты квоты или стоимость.",
-          "Account activity reported by Codex, not just this Mac. The period ends on Codex’s latest reported day; dates follow the source. Missing days are not zero. Tokens are not converted into quota percentages or cost."
-        )
-      ).font(.caption).foregroundStyle(.secondary)
-    }
-  }
-
-  private var chart: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      Chart(days) { day in
-        BarMark(
-          x: .value(localized("День", "Day"), day.day),
-          y: .value(localized("Токены", "Tokens"), day.tokens)
-        )
-        .foregroundStyle(Color.mint.gradient).cornerRadius(3)
-        .accessibilityLabel(day.day)
-        .accessibilityValue(
-          localized("\(day.tokens.formatted()) токенов", "\(day.tokens.formatted()) tokens"))
-        if day.tokens == 0 {
-          PointMark(
-            x: .value(localized("День", "Day"), day.day),
-            y: .value(localized("Токены", "Tokens"), 0)
-          )
-          .foregroundStyle(Color.mint).symbolSize(20)
-        }
-      }
-      .chartXScale(domain: dayLabels)
-      .chartYScale(domain: 0...max(1, days.map(\.tokens).max() ?? 1))
-      .chartXAxis {
-        AxisMarks(
-          values: dayLabels.enumerated().compactMap { index, day in
-            index % max(1, dayCount / (compact ? 3 : 6)) == 0 || index == dayCount - 1 ? day : nil
-          }
-        ) { value in
-          AxisValueLabel(anchor: axisLabelAnchor(value)) {
-            if let day = value.as(String.self), let date = Self.dayFormatter.date(from: day) {
-              Text(Self.dayLabelFormatter.string(from: date))
-            }
-          }
-        }
-      }
-      .chartYAxis {
-        AxisMarks(values: .automatic(desiredCount: 4)) { value in
-          AxisGridLine()
-          AxisValueLabel {
-            if let number = value.as(Double.self) {
-              Text(number.formatted(.number.notation(.compactName)))
-            }
-          }
-        }
-      }
-      .chartOverlay { proxy in
-        GeometryReader { geometry in
-          Color.clear.contentShape(Rectangle()).onContinuousHover { phase in
-            switch phase {
-            case .active(let location):
-              guard let plot = proxy.plotFrame else { return }
-              let frame = geometry[plot]
-              hoveredDay =
-                frame.contains(location)
-                ? proxy.value(atX: location.x - frame.minX, as: String.self) : nil
-            case .ended: hoveredDay = nil
-            }
-          }
-        }
-      }
-      .frame(height: compact ? 165 : 235)
-      Text(hoverText).font(.caption).foregroundStyle(.secondary)
-    }.padding(12)
-      .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 11))
-  }
-
-  private var hoverText: String {
-    guard let hoveredDay else {
-      return localized("Наведите на день для точного значения", "Hover a day for the exact count")
-    }
-    guard let day = days.first(where: { $0.day == hoveredDay }) else {
-      return hoveredDay + " · " + localized("Нет данных", "No data")
-    }
-    return day.day + " · "
-      + localized("\(day.tokens.formatted()) токенов", "\(day.tokens.formatted()) tokens")
-  }
-  private static var dayLabelFormatter: DateFormatter {
-    let formatter = Self.dayFormatter
-    formatter.locale = .current
-    formatter.setLocalizedDateFormatFromTemplate("d MMM")
-    return formatter
-  }
-  private func tokenTotal(_ value: Int64?, title: String) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
-      Text(title).font(.caption).foregroundStyle(.secondary)
-      Text(value.map { $0.formatted() } ?? "—")
-        .font(.system(size: compact ? 20 : 26, weight: .semibold, design: .rounded))
-        .monospacedDigit()
-    }
-  }
-  private func message(_ title: String) -> some View {
-    Label(title, systemImage: "chart.bar.xaxis").font(.callout).foregroundStyle(.secondary)
-      .frame(maxWidth: .infinity, minHeight: 110, alignment: .center).padding(16)
-      .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 11))
-  }
-}
-
-private func statisticsColor(_ agent: AgentID) -> Color {
+func statisticsColor(_ agent: AgentID) -> Color {
   switch agent {
   case .codex: .mint
   case .claude: .orange
@@ -468,7 +334,7 @@ private func percentLabel(_ value: Double) -> String {
   value.formatted(.number.precision(.fractionLength(0...1))) + "%"
 }
 
-private func axisLabelAnchor(_ value: AxisValue) -> UnitPoint {
+func axisLabelAnchor(_ value: AxisValue) -> UnitPoint {
   if value.index == 0 { return .topLeading }
   if value.index == value.count - 1 { return .topTrailing }
   return .top

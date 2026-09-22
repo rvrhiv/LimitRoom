@@ -71,18 +71,19 @@ public struct CodexConnector: AllowanceConnector {
       subscription.creditBalance = credits["balance"] as? String
       subscription.isUnlimited = credits["unlimited"] as? Bool
     }
-    var tokenUsage = CodexTokenUsage(state: .unavailable)
+    var tokenUsage = TokenUsage(state: .unavailable)
+    var quotaResets = identity == nil ? nil : decodeQuotaResets(limitsReply)
     if identity != nil {
       do {
         let reply = try rpc.request("account/usage/read", id: 4, params: [:], timeout: 3)
         tokenUsage = try decodeTokenUsage(reply)
       } catch RPCError.server(let code) where code == -32601 {
-        tokenUsage = CodexTokenUsage(state: .unsupported)
+        tokenUsage = TokenUsage(state: .unsupported)
       } catch {
         // Optional statistics must never make a successful quota read fail.
-        tokenUsage = CodexTokenUsage(state: .unavailable)
+        tokenUsage = TokenUsage(state: .unavailable)
       }
-      if tokenUsage.state == .ready {
+      if tokenUsage.state == .ready || quotaResets != nil {
         if let verifiedReply = try? rpc.request(
           "account/read", id: 5, params: ["refreshToken": false], timeout: 2)
         {
@@ -90,7 +91,8 @@ public struct CodexConnector: AllowanceConnector {
             (verified["id"] as? String ?? verified["email"] as? String) == identity
           else { throw ConnectorError.signedOut }
         } else {
-          tokenUsage = CodexTokenUsage(state: .unavailable)
+          tokenUsage = TokenUsage(state: .unavailable)
+          quotaResets = nil
         }
       }
     }
@@ -99,10 +101,22 @@ public struct CodexConnector: AllowanceConnector {
       plan: account["planType"] as? String ?? buckets.first?.1["planType"] as? String,
       subscription: subscription, windows: windows, observedAt: quotaObservedAt,
       state: windows.isEmpty ? .unsupported : .ready, source: "Codex App Server",
-      codexTokenUsage: tokenUsage)
+      tokenUsage: tokenUsage, quotaResets: quotaResets)
   }
 
-  private static func decodeTokenUsage(_ reply: [String: Any]) throws -> CodexTokenUsage {
+  private static func decodeQuotaResets(_ reply: [String: Any]) -> QuotaResets? {
+    struct Summary: Decodable { let availableCount: Int }
+    guard let raw = reply["rateLimitResetCredits"] as? [String: Any],
+      let data = try? JSONSerialization.data(withJSONObject: raw),
+      let summary = try? JSONDecoder().decode(Summary.self, from: data),
+      summary.availableCount >= 0
+    else { return nil }
+    // Credit detail rows may be capped. Neither their count nor a balance change
+    // establishes the number used; a credit can also expire or be newly granted.
+    return QuotaResets(availableCount: summary.availableCount)
+  }
+
+  private static func decodeTokenUsage(_ reply: [String: Any]) throws -> TokenUsage {
     struct Reply: Decodable {
       struct Summary: Decodable { let lifetimeTokens: Int64? }
       struct Day: Decodable {
@@ -124,16 +138,16 @@ public struct CodexConnector: AllowanceConnector {
     formatter.dateFormat = "yyyy-MM-dd"
     formatter.isLenient = false
     var seen: Set<String> = []
-    let days = try decoded.dailyUsageBuckets?.map { day -> CodexTokenDay in
+    let days = try decoded.dailyUsageBuckets?.map { day -> TokenDay in
       guard day.tokens >= 0, day.startDate.utf8.count == 10,
         day.startDate.range(of: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", options: .regularExpression) != nil,
         let date = formatter.date(from: day.startDate),
         formatter.string(from: date) == day.startDate,
         seen.insert(day.startDate).inserted
       else { throw ConnectorError.invalidResponse }
-      return CodexTokenDay(day: day.startDate, tokens: day.tokens)
+      return TokenDay(day: day.startDate, tokens: day.tokens)
     }
-    return CodexTokenUsage(
+    return TokenUsage(
       state: .ready, observedAt: .now, lifetimeTokens: decoded.summary.lifetimeTokens,
       days: days?.sorted { $0.day < $1.day })
   }

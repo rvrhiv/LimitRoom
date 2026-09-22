@@ -1,10 +1,14 @@
 import Foundation
 
 public struct QuotaHistoryPoint: Identifiable, Sendable {
+  public enum Transition: Sendable {
+    case gap, reset, correction
+  }
   public var id: String { sample.id }
   public let sample: HistorySample
   public let segment: String
   public let beginsNewCycle: Bool
+  public let transition: Transition?
   public var remainingPercent: Double { min(100, max(0, 100 - sample.usedPercent)) }
 }
 
@@ -22,17 +26,19 @@ public enum TrendCalculator {
       SeriesKey(agent: $0.agent, account: $0.accountScope, window: $0.windowID)
     }
     return grouped.values.flatMap { series -> [QuotaHistoryPoint] in
-      let ordered = series.filter { $0.usedPercent.isFinite && $0.usedPercent >= 0 }
-        .sorted { $0.observedAt < $1.observedAt }
+      let ordered = series.filter {
+        $0.usedPercent.isFinite && $0.usedPercent >= 0
+          && $0.observedAt.timeIntervalSince1970.isFinite
+      }.sorted { $0.observedAt < $1.observedAt }
       var points: [QuotaHistoryPoint] = []
       var previous: HistorySample?
       var segment = 0
       for current in ordered {
         var beginsNewCycle = false
+        var transition: QuotaHistoryPoint.Transition?
         if let previous {
           let elapsed = current.observedAt.timeIntervalSince(previous.observedAt)
-          // A changed deadline is a reset marker only after the previous deadline
-          // passed. Corrections and unknown/rolling cycles simply break the line.
+          // The marker is an observed new cycle, not an invented reading at 100%.
           if let cycle = current.cycleKey, let oldCycle = previous.cycleKey,
             cycle != oldCycle, current.plan == previous.plan,
             let oldDeadline = Double(oldCycle), oldDeadline.isFinite,
@@ -41,10 +47,19 @@ public enum TrendCalculator {
           {
             beginsNewCycle = true
           }
-          if current.cycleKey == nil || current.cycleKey != previous.cycleKey
-            || current.plan != previous.plan || elapsed <= 0 || elapsed > maximumGap
+          if current.plan != previous.plan || elapsed <= 0 {
+            // No visual bridge between incompatible readings.
+            segment += 1
+          } else if beginsNewCycle {
+            transition = .reset
+            segment += 1
+          } else if current.cycleKey != previous.cycleKey
             || current.usedPercent < previous.usedPercent
           {
+            transition = .correction
+            segment += 1
+          } else if elapsed > maximumGap {
+            transition = .gap
             segment += 1
           }
         }
@@ -53,7 +68,7 @@ public enum TrendCalculator {
             sample: current,
             segment:
               "\(current.agent.rawValue)/\(current.accountScope)/\(current.windowID)/\(segment)",
-            beginsNewCycle: beginsNewCycle))
+            beginsNewCycle: beginsNewCycle, transition: transition))
         previous = current
       }
       return points
@@ -63,45 +78,33 @@ public enum TrendCalculator {
     }
   }
 
-  /// Display projection only: collapse flat runs, then keep bucket extrema and
-  /// cycle markers. Original segment IDs prevent lines across any missing data.
-  /// Hover details still use every observation, including omitted singletons.
+  /// A less noisy display projection: one real observation near each time-bucket
+  /// midpoint, plus every segment boundary. Never average across gaps or resets;
+  /// the full observations remain the source for hover values and exports.
   public static func chartPoints(
-    from points: [QuotaHistoryPoint], maximumBuckets: Int = 500
+    from points: [QuotaHistoryPoint], maximumBuckets: Int = 80
   ) -> [QuotaHistoryPoint] {
-    let grouped = Dictionary(grouping: points, by: \.segment)
-    let simplified: [QuotaHistoryPoint] = grouped.values.flatMap { series in
-      series.enumerated().compactMap { index, point -> QuotaHistoryPoint? in
-        if index > 0, index < series.count - 1,
-          point.remainingPercent == series[index - 1].remainingPercent,
-          point.remainingPercent == series[index + 1].remainingPercent
-        {
-          return nil
-        }
-        return point
-      }
-    }
-    let byAgent = Dictionary(grouping: simplified, by: { $0.sample.agent })
+    guard let start = points.first?.sample.observedAt,
+      let end = points.last?.sample.observedAt, end > start
+    else { return points }
     let bucketCount = max(1, maximumBuckets)
-    let projected: [QuotaHistoryPoint] = byAgent.values.flatMap { values in
-      guard values.count > bucketCount * 4,
-        let start = values.map({ $0.sample.observedAt }).min(),
-        let end = values.map({ $0.sample.observedAt }).max(), end > start
-      else { return values }
-      let width = end.timeIntervalSince(start) / Double(bucketCount)
-      let buckets = Dictionary(grouping: values) { point in
+    let width = end.timeIntervalSince(start) / Double(bucketCount)
+    let grouped = Dictionary(grouping: points, by: \.segment)
+    let projected: [QuotaHistoryPoint] = grouped.values.flatMap { series -> [QuotaHistoryPoint] in
+      guard let first = series.first, let last = series.last else { return [] }
+      let buckets = Dictionary(grouping: series) { point in
         min(bucketCount - 1, Int(point.sample.observedAt.timeIntervalSince(start) / width))
       }
-      var retained: [String: QuotaHistoryPoint] = [:]
-      for bucket in buckets.values {
-        let candidates = [
-          bucket.min { $0.sample.observedAt < $1.sample.observedAt },
-          bucket.max { $0.sample.observedAt < $1.sample.observedAt },
-          bucket.min { $0.remainingPercent < $1.remainingPercent },
-          bucket.max { $0.remainingPercent < $1.remainingPercent },
-        ]
-        for point in candidates.compactMap({ $0 }) { retained[point.id] = point }
-        for point in bucket where point.beginsNewCycle { retained[point.id] = point }
+      var retained: [String: QuotaHistoryPoint] = [first.id: first]
+      retained[last.id] = last
+      for (index, bucket) in buckets {
+        let midpoint = start.addingTimeInterval((Double(index) + 0.5) * width)
+        if let point = bucket.min(by: {
+          abs($0.sample.observedAt.timeIntervalSince(midpoint))
+            < abs($1.sample.observedAt.timeIntervalSince(midpoint))
+        }) {
+          retained[point.id] = point
+        }
       }
       return Array(retained.values)
     }

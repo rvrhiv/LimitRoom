@@ -4,5 +4,10 @@ SWIFT_STRICT_CONCURRENCY = complete
 ENABLE_USER_SCRIPT_SANDBOXING = YES
 ENABLE_HARDENED_RUNTIME = YES
 CODE_SIGN_STYLE = Automatic
+// Debug and Release are both local development builds unless explicitly distributed.
+LIMITROOM_BUILD_FLAVOR = development
+LIMITROOM_APP_NAME_development = LimitRoom Dev
+LIMITROOM_APP_NAME_distribution = LimitRoom
+LIMITROOM_APP_NAME = $(LIMITROOM_APP_NAME_$(LIMITROOM_BUILD_FLAVOR))
 // Set DEVELOPMENT_TEAM in ignored Local.xcconfig for a developer-signed build.
 #include? "Local.xcconfig"

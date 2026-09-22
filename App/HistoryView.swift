@@ -48,8 +48,8 @@ struct HistoryView: View {
       } else {
         Text(
           localized(
-            "Источник: Codex App Server · без сохранения токенов на диск",
-            "Source: Codex App Server · token counts are not stored on disk")
+            "История токенов от подключённых источников · без сохранения на диск",
+            "Token history from connected providers · not stored on disk")
         )
         .font(.caption).foregroundStyle(.secondary)
       }

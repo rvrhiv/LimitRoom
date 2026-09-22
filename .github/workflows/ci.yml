@@ -24,5 +24,7 @@ jobs:
           swift format lint --strict --recursive Package.swift App Sources Scripts/generate-icon.swift
           plutil -lint Config/App-Info.plist LimitRoom.xcodeproj/project.pbxproj
           for script in Scripts/*.sh; do bash -n "$script"; done
-      - name: Universal application and signatures
+      - name: Development application and signatures
         run: bash Scripts/build-app.sh Release
+      - name: Distribution application and signatures
+        run: bash Scripts/build-app.sh Release distribution

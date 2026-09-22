@@ -22,7 +22,7 @@ LimitRoom is a native macOS quota monitor for **Codex, Claude Code, and Cursor**
 
 <p align="center">
   <img src="docs/assets/notch.png" height="510" alt="Expanded notch panel with Codex, Claude Code, and Cursor allowance cards">
-  <img src="docs/assets/statistics.png" height="510" alt="Remaining allowance from 0 to 100 percent, with separate Codex token statistics">
+  <img src="docs/assets/statistics.png" height="510" alt="Smooth quota history with work sessions, quiet periods, and marked resets">
 </p>
 
 <p align="center"><sub>Actual app views rendered with demonstration data. No personal accounts or usage are shown.</sub></p>
@@ -31,7 +31,7 @@ LimitRoom is a native macOS quota monitor for **Codex, Claude Code, and Cursor**
 
 - **One glance, one chosen quota.** An agent icon, remaining-allowance ring, and percentage. Choose which parts to show; switch the pinned window from any agent card.
 - **Two ways to stay out of the way.** Click the menu-bar indicator, or hover over the notch to reveal all three cards. A pin keeps the notch panel open when you need it.
-- **Understand your usage.** Compare remaining allowances on a clear 0–100% chart, keep 90 days of local quota history, and export CSV or JSON. A separate Codex view shows reported daily tokens, without confusing them with quota or cost.
+- **Understand your usage.** Compare remaining allowances on a smooth 0–100% chart, browse 1, 3, 7, 30, or 90 days, and export local quota history as CSV or JSON. A shared Tokens chart compares reported daily activity from supported agents, separate from quota and cost.
 - **Make it feel like your Mac.** Live display previews, light and dark appearance, optional haptics, Reduce Motion support, and English or Russian based on your system language.
 - **Stay in control.** Refresh every 1, 5, 30, or 60 minutes; opt into low-quota notifications and choose whether to launch at login. Signed app updates install only when you choose.
 
@@ -65,13 +65,13 @@ This allows this app without disabling Gatekeeper. Do not bypass warnings about 
 | --- | --- | --- |
 | **Codex** | Your installed Codex CLI and existing ChatGPT sign-in | Subscription windows and optional account token statistics; requires a CLI with App Server support. |
 | **Claude Code** | An explicitly enabled, reversible status-line helper | Quotas reported by an active Claude Code session; availability depends on its version and subscription. |
-| **Cursor** | Your installed Cursor session, with your permission | Personal usage via Cursor's private dashboard endpoints; compatibility can change. An isolated web sign-in is also available. |
+| **Cursor** | Your installed Cursor session, with your permission | Personal quota and optional token history via private dashboard endpoints; compatibility can change. An isolated web sign-in is also available. |
 
-One active account per agent. Subscription details and reset times appear when the source provides them. Missing or stale data stays visibly missing or stale — it never becomes a made-up balance. [Connection guide →](docs/usage.md#connect-your-agents)
+One active account per agent. Subscription details, reset times, and extra reset counts appear when the source provides them; unknown reset counts stay hidden. Missing or stale quota readings never become a made-up balance. [Connection guide →](docs/usage.md#connect-your-agents)
 
 ## Local-first by design
 
-No LimitRoom account, backend, or telemetry. Quota history stays on your Mac; Codex token history comes from Codex and is not cached on disk. LimitRoom does not read your conversations or import browser cookies. Network requests go to the enabled agent's service and GitHub for updates; the app is not fully offline. [Data and privacy →](docs/usage.md#data-and-privacy)
+No LimitRoom account, backend, or telemetry. Quota history stays on your Mac; token history comes from the agents and is not cached on disk. LimitRoom does not read your conversations or import browser cookies. Network requests go to the enabled agent's service and GitHub for updates; the app is not fully offline. [Data and privacy →](docs/usage.md#data-and-privacy)
 
 ## Build and contribute
 
@@ -81,10 +81,10 @@ With full Xcode and Swift 6 installed:
 git clone https://github.com/rvrhiv/LimitRoom.git
 cd LimitRoom
 bash Scripts/build-app.sh Release
-open build/LimitRoom.app --args --demo
+open 'build/LimitRoom Dev.app' --args --demo
 ```
 
-Demo mode previews the UI without reading agent accounts or writing personal usage history. The build script leaves your installed app untouched.
+Local builds are named **LimitRoom Dev** and do not receive release updates. Demo mode previews the UI without reading agent accounts or writing personal usage history. The build script leaves your installed app untouched.
 
 [Contributing](CONTRIBUTING.md) · [Architecture](docs/architecture.md) · [Releasing](docs/releasing.md) · [Report a bug](https://github.com/rvrhiv/LimitRoom/issues/new/choose) · [Security](SECURITY.md)
 

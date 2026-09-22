@@ -74,8 +74,8 @@ final class NotchPanelController {
   func close() {
     cancelOpen()
     cancelClose()
-    guard isVisible else { return }
     state.isHeld = false
+    guard isVisible else { return }
     guard state.isExpanded else { return }
     state.isExpanded = false
     panel?.resignKey()

@@ -9,6 +9,12 @@ limitroom_app="$limitroom_root/build/LimitRoom.app"
 limitroom_plist="$limitroom_app/Contents/Info.plist"
 limitroom_output="$limitroom_root/build/releases/$limitroom_version"
 
+if [[ "$(/usr/libexec/PlistBuddy -c 'Print :LimitRoomBuildFlavor' "$limitroom_plist")" != distribution ]]; then
+  echo 'Only distribution builds can be packaged. Run: bash Scripts/build-app.sh Release distribution' >&2
+  exit 1
+fi
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleName' "$limitroom_plist")" == LimitRoom ]]
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$limitroom_plist")" == LimitRoom ]]
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$limitroom_plist")" == com.rvrhiv.LimitRoom ]]
 for limitroom_info in "$limitroom_plist" "$limitroom_root/Config/App-Info.plist"; do
   [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$limitroom_info")" == "$limitroom_version" ]]

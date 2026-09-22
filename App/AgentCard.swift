@@ -11,7 +11,7 @@ struct AgentCard: View {
   let pin: (AllowanceWindow) -> Void
   let connect: () -> Void
   @Environment(\.colorScheme) private var scheme
-  @State private var expanded = false
+  @State var expanded = false
 
   private var selectedAgent: Bool { selection?.agent == snapshot.agent }
   private var accent: Color { presentationAccent(scheme) }
@@ -209,6 +209,15 @@ struct AgentCard: View {
         detail(
           localized("Оплата", "Billing"),
           localized("Дата не получена от источника", "Date not provided"))
+      }
+      if snapshot.isFresh(at: now), snapshot.accountScope != nil, let resets = snapshot.quotaResets
+      {
+        if let count = resets.availableCount, count >= 0 {
+          detail(localized("Осталось сбросов", "Resets remaining"), count.formatted())
+        }
+        if let count = resets.usedCount, count >= 0 {
+          detail(localized("Использовано сбросов", "Resets used"), count.formatted())
+        }
       }
       ForEach(snapshot.windows) { window in
         Divider().opacity(0.5)

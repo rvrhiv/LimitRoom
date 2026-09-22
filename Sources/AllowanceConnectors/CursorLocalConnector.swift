@@ -8,6 +8,7 @@ public actor CursorLocalConnector: AllowanceConnector {
   private let store = CursorLocalSessionStore()
   private var lastGood: AgentSnapshot?
   private var lastSubject: String?
+  private var tokenCache: CursorTokenHistoryCache?
   private var generation = 0
   private var activeSession: URLSession?
   private let source = "Cursor.app → Cursor Dashboard"
@@ -20,6 +21,7 @@ public actor CursorLocalConnector: AllowanceConnector {
     activeSession = nil
     lastGood = nil
     lastSubject = nil
+    tokenCache = nil
     issue = nil
   }
 
@@ -31,7 +33,10 @@ public actor CursorLocalConnector: AllowanceConnector {
     } catch {
       return failClosed(error as? CursorLocalConnectionIssue ?? .storageUnavailable)
     }
-    if lastSubject != auth.subject { lastGood = nil }
+    if lastSubject != auth.subject {
+      lastGood = nil
+      tokenCache = nil
+    }
     lastSubject = auth.subject
     let configuration = URLSessionConfiguration.ephemeral
     configuration.httpShouldSetCookies = false
@@ -43,21 +48,38 @@ public actor CursorLocalConnector: AllowanceConnector {
     configuration.timeoutIntervalForResource = 12
     let session = URLSession(configuration: configuration)
     activeSession = session
+    let tokenNow = Date.now
+    let cachedTokens = CursorTokenHistory.cachedUsage(
+      tokenCache, subject: auth.subject, now: tokenNow)
+    let tokenTask = Task {
+      await Self.readTokenUsage(
+        auth: auth, session: session, cached: cachedTokens, now: tokenNow)
+    }
     defer {
+      tokenTask.cancel()
       session.invalidateAndCancel()
       if requestGeneration == generation { activeSession = nil }
     }
     do {
       async let usage = Self.fetch(path: "/api/usage-summary", auth: auth, session: session)
       async let identity = Self.fetch(path: "/api/auth/me", auth: auth, session: session)
-      let snapshot = try await CursorProjection.snapshot(
+      var snapshot = try await CursorProjection.snapshot(
         usage: usage, identity: identity, expectedSubject: auth.subject, source: source)
       guard requestGeneration == generation else { return disconnected() }
       guard try store.read() == auth else { return failClosed(.accountChanged) }
+      let tokenUsage = await tokenTask.value
+      snapshot.tokenUsage = tokenUsage
+      guard requestGeneration == generation else { return disconnected() }
+      guard try store.read() == auth else { return failClosed(.accountChanged) }
+      if cachedTokens == nil {
+        tokenCache = CursorTokenHistory.cache(
+          subject: auth.subject, usage: tokenUsage, now: .now)
+      }
       lastGood = snapshot
       issue = nil
       return snapshot
     } catch {
+      tokenTask.cancel()
       guard requestGeneration == generation else { return disconnected() }
       let failure = error as? CursorLocalConnectionIssue ?? .unavailable
       // Only a still-identical, unexpired local session may retain its old reading.
@@ -71,6 +93,19 @@ public actor CursorLocalConnector: AllowanceConnector {
     }
   }
 
+  private static func readTokenUsage(
+    auth: CursorLocalSession, session: URLSession, cached: TokenUsage?, now: Date
+  ) async -> TokenUsage {
+    if let cached { return cached }
+    do {
+      return try await CursorTokenHistory.fetch(auth: auth, session: session, now: now)
+    } catch {
+      // History is optional. A complete quota response stays valid when this
+      // private endpoint is unavailable, changes schema, or exceeds our cap.
+      return TokenUsage(state: .unavailable, dayBoundary: .utc)
+    }
+  }
+
   private func disconnected() -> AgentSnapshot {
     AgentSnapshot(agent: .cursor, state: .needsSetup, source: source)
   }
@@ -79,6 +114,7 @@ public actor CursorLocalConnector: AllowanceConnector {
     self.issue = issue
     lastGood = nil
     lastSubject = nil
+    tokenCache = nil
     // Empty unavailable snapshots can inherit another account in AllowanceMonitor.
     // needsSetup/signedOut explicitly clear the old account instead.
     let state: SourceState =

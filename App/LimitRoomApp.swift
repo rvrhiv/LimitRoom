@@ -23,8 +23,9 @@ struct LimitRoomApp: App {
         set: { _ in })
     ) {
       DashboardView(
-        model: model, openHistory: presentation.openHistory,
-        openSettings: presentation.openSettings)
+        model: model, close: presentation.dismissMenuBarPanel,
+        openHistory: presentation.openHistory, openSettings: presentation.openSettings,
+        captureWindow: presentation.captureMenuBarPanel)
     } label: {
       MenuBarIndicatorImage(model: model)
     }

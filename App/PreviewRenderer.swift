@@ -57,13 +57,28 @@ enum PreviewRenderer {
     if let raw = argument("--statistics-mode"), let mode = StatisticsMode(rawValue: raw) {
       model.statisticsMode = mode
     }
-    if let raw = argument("--history-days"), let days = Int(raw), [1, 7, 30, 90].contains(days) {
+    if let raw = argument("--history-days"), let days = Int(raw), [1, 3, 7, 30, 90].contains(days) {
       model.historyDays = days
     }
     let surface = argument("--surface") ?? "menu"
     let content: AnyView
     let size: CGSize
     switch surface {
+    case "agent-details":
+      guard let snapshot = model.snapshots.first(where: { $0.agent == model.settingsAgent }) else {
+        fail("Missing demo agent.")
+      }
+      size = CGSize(width: 414, height: 600)
+      content = AnyView(
+        VStack {
+          AgentCard(
+            snapshot: snapshot, selection: model.selection, now: model.displayDate,
+            pin: { _ in }, connect: {}, expanded: true)
+          Spacer(minLength: 0)
+        }.padding(20)
+          .frame(width: size.width, height: size.height, alignment: .top)
+          .environment(\.colorScheme, dark ? .dark : .light)
+          .background(dark ? Color.black : Color.white))
     case "history":
       size = CGSize(width: 860, height: 740)
       content = AnyView(
@@ -127,7 +142,7 @@ enum PreviewRenderer {
       size = CGSize(width: 430, height: 800)
       content = AnyView(
         VStack(alignment: .leading, spacing: 16) {
-          Text("LimitRoom · DEMO · v\(AppIdentity.version)").font(
+          Text("\(AppIdentity.name) · DEMO · v\(AppIdentity.version)").font(
             .system(size: 13, weight: .semibold))
           DisplayPreferencesControls(model: model)
             .font(.system(size: 11)).toggleStyle(.switch).controlSize(.mini)

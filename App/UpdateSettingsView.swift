@@ -59,10 +59,15 @@ struct UpdateSettingsView: View {
         )
         .disabled(updates.phase == .disabled || updates.isDemo)
         Text(
-          localized(
-            "Новая версия подсвечивается в панели. Установка — только по кнопке, с проверкой подписи и перезапуском приложения. Данные агентов не отправляются.",
-            "New versions are highlighted in the panel. Installation requires a click and verifies the signature before relaunching. Agent data is never sent."
-          )
+          AppIdentity.isDevelopmentBuild
+            ? localized(
+              "Локальная сборка не заменяется релизами из GitHub. Чтобы обновить LimitRoom Dev, соберите приложение заново.",
+              "GitHub releases do not replace local builds. Rebuild the app to update LimitRoom Dev."
+            )
+            : localized(
+              "Новая версия подсвечивается в панели. Установка — только по кнопке, с проверкой подписи и перезапуском приложения. Данные агентов не отправляются.",
+              "New versions are highlighted in the panel. Installation requires a click and verifies the signature before relaunching. Agent data is never sent."
+            )
         )
         .font(.callout).foregroundStyle(.secondary)
       }
