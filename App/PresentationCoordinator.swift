@@ -8,6 +8,8 @@ final class PresentationCoordinator {
   @ObservationIgnored private let windows: ApplicationWindows
   @ObservationIgnored private var notch: NotchPanelController?
   @ObservationIgnored private weak var menuBarPanel: NSWindow?
+  @ObservationIgnored private var menuVisibilityObservation: NSKeyValueObservation?
+  @ObservationIgnored private var menuOcclusionObserver: NSObjectProtocol?
   @ObservationIgnored private var observations: [(NotificationCenter, NSObjectProtocol)] = []
   @ObservationIgnored private var presentationObservation: NSKeyValueObservation?
   @ObservationIgnored private var settleTask: Task<Void, Never>?
@@ -28,6 +30,7 @@ final class PresentationCoordinator {
       openHistory: { [weak self] in self?.openHistory() },
       openSettings: { [weak self] in self?.openSettings() })
     model.presentation.onModeChange = { [weak self] in
+      self?.dismissMenuBarPanel()
       self?.notch?.hide()
       self?.reconcile()
     }
@@ -50,6 +53,7 @@ final class PresentationCoordinator {
     }
     observe(NSWorkspace.willSleepNotification, center: workspace) { [weak self] in
       self?.sleeping = true
+      self?.dismissMenuBarPanel()
       self?.notch?.hide()
     }
     observe(NSWorkspace.didWakeNotification, center: workspace) { [weak self] in
@@ -58,6 +62,7 @@ final class PresentationCoordinator {
     }
     observe(NSWorkspace.sessionDidResignActiveNotification, center: workspace) { [weak self] in
       self?.inactiveSession = true
+      self?.dismissMenuBarPanel()
       self?.notch?.hide()
     }
     observe(NSWorkspace.sessionDidBecomeActiveNotification, center: workspace) { [weak self] in
@@ -76,6 +81,13 @@ final class PresentationCoordinator {
     settleTask?.cancel()
     presentationObservation?.invalidate()
     presentationObservation = nil
+    dismissMenuBarPanel()
+    menuVisibilityObservation?.invalidate()
+    menuVisibilityObservation = nil
+    if let menuOcclusionObserver {
+      NotificationCenter.default.removeObserver(menuOcclusionObserver)
+    }
+    menuOcclusionObserver = nil
     for (center, token) in observations { center.removeObserver(token) }
     observations.removeAll()
     model.presentation.onModeChange = nil
@@ -92,10 +104,34 @@ final class PresentationCoordinator {
   }
 
   func captureMenuBarPanel(_ window: NSWindow) {
+    guard menuBarPanel !== window else { return }
+    menuVisibilityObservation?.invalidate()
+    if let menuOcclusionObserver {
+      NotificationCenter.default.removeObserver(menuOcclusionObserver)
+    }
     menuBarPanel = window
+    // MenuBarExtra can retain its SwiftUI content between openings. Observe the
+    // actual host window instead of treating the view's lifetime as visibility.
+    menuVisibilityObservation = window.observe(\.isVisible, options: [.initial, .new]) {
+      [weak self, weak window] _, _ in
+      Task { @MainActor in self?.updateMenuVisibility(window) }
+    }
+    menuOcclusionObserver = NotificationCenter.default.addObserver(
+      forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main
+    ) { [weak self, weak window] _ in
+      Task { @MainActor in self?.updateMenuVisibility(window) }
+    }
+  }
+
+  private func updateMenuVisibility(_ window: NSWindow?) {
+    guard menuBarPanel === window else { return }
+    model.setQuotaPanelVisible(
+      .menuBar,
+      started && showsMenuBar && !sleeping && !inactiveSession && window?.isVisible == true)
   }
 
   func dismissMenuBarPanel() {
+    model.setQuotaPanelVisible(.menuBar, false)
     menuBarPanel?.orderOut(nil)
   }
 
@@ -141,6 +177,7 @@ final class PresentationCoordinator {
       notch?.hide()
       return
     }
+    if showsMenuBar { dismissMenuBarPanel() }
     showsMenuBar = false
     model.presentation.fallbackMessage = nil
     if sleeping || inactiveSession || isFullscreen(on: geometry) {

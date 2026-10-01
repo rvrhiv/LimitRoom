@@ -12,6 +12,9 @@ enum PreviewRenderer {
       fail("--render-preview requires an output path.")
     }
     let dark = CommandLine.arguments.contains("--dark")
+    if CommandLine.arguments.contains("--stale") {
+      for index in model.snapshots.indices { model.snapshots[index].state = .stale }
+    }
     if let raw = argument("--mode"), let mode = PresentationMode(rawValue: raw) {
       model.presentation.mode = mode
     }

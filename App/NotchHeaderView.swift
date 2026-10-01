@@ -114,7 +114,7 @@ private struct NotchSlotView: View {
             Text(secondary).font(.system(size: 9)).foregroundStyle(.secondary)
           }
         }.monospacedDigit().lineLimit(1).minimumScaleFactor(0.8)
-          .opacity(stale ? 0.6 : 1)
+          .opacity(stale ? staleReadingOpacity : 1)
           .accessibilityElement(children: .ignore)
           .accessibilityLabel(resetAccessibility)
           .help(resetAccessibility)
@@ -123,7 +123,7 @@ private struct NotchSlotView: View {
           if stale { Image(systemName: "clock").font(.system(size: 8)) }
           Text(model.pinned.map { shortWindowTitle($0.1) } ?? "—")
             .font(.system(size: 10, weight: .medium)).lineLimit(1).truncationMode(.tail)
-        }.opacity(stale ? 0.6 : 1)
+        }.opacity(stale ? staleReadingOpacity : 1)
           .help(
             [
               model.selection?.agent.title, model.pinned?.1.title,

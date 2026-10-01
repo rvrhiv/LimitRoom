@@ -41,7 +41,7 @@ struct AgentSettingsView: View {
             )
             .foregroundStyle(.secondary)
             Button(localized("Обновить подключение", "Refresh connection")) {
-              Task { await model.refresh() }
+              Task { await model.refresh(agent: .codex) }
             }.disabled(model.isDemo || model.isRefreshing)
             DisclosureGroup(localized("Другой путь к Codex CLI", "Custom Codex CLI path")) {
               TextField(
@@ -143,7 +143,7 @@ struct AgentSettingsView: View {
                 confirmCursorLocal = true
               }
               .disabled(model.isDemo || model.cursorDisconnecting || model.cursorConnecting)
-              if model.cursorUsesLocalSession || model.cursorSignIn != nil {
+              if model.cursorUsesLocalSession || model.cursorBrowserEnabled {
                 Button(localized("Отключить", "Disconnect")) {
                   Task { await model.disconnectCursor() }
                 }

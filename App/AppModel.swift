@@ -5,6 +5,10 @@ import AllowanceStorage
 import AppKit
 import Observation
 
+enum QuotaPanel: Hashable {
+  case menuBar, notch
+}
+
 @MainActor @Observable
 final class AppModel {
   let isDemo: Bool
@@ -30,6 +34,7 @@ final class AppModel {
   var cursorMessage: String?
   var cursorDisconnecting = false
   private(set) var cursorUsesLocalSession = false
+  private(set) var cursorBrowserEnabled = false
   private(set) var cursorConnecting = false
   var claudeMessage: String?
   var claudeConnecting = false
@@ -42,9 +47,13 @@ final class AppModel {
   @ObservationIgnored private let defaults = UserDefaults.standard
   @ObservationIgnored private var loop: Task<Void, Never>?
   @ObservationIgnored private var wakeObserver: NSObjectProtocol?
-  @ObservationIgnored private var lastRefresh = Date.distantPast
-  @ObservationIgnored private var refreshAgain = false
+  @ObservationIgnored private var lastRefresh: [AgentID: Date] = [:]
+  @ObservationIgnored private var pendingAutomaticRefresh: Set<AgentID> = []
+  @ObservationIgnored private var pendingExplicitRefresh: Set<AgentID> = []
+  @ObservationIgnored private var visibleQuotaPanels: Set<QuotaPanel> = []
+  @ObservationIgnored private var lastHistoryRead = Date.distantPast
   @ObservationIgnored private var configurationGeneration = 0
+  @ObservationIgnored private var sourceChangeDepth = 0
   @ObservationIgnored private var historyRevision = 0
   @ObservationIgnored private var historyProjectionKey: HistoryProjectionKey?
   @ObservationIgnored private var historyProjection: [QuotaHistoryPoint] = []
@@ -131,11 +140,9 @@ final class AppModel {
     }
     notified = Set(preferences.stringArray(forKey: "notifiedCrossings") ?? [])
     cursorUsesLocalSession = preferences.bool(forKey: "cursorLocalSessionEnabled")
-    if !cursorUsesLocalSession, preferences.bool(forKey: "cursorConnected") {
-      prepareCursor().resume()
-    }
+    cursorBrowserEnabled = !cursorUsesLocalSession && preferences.bool(forKey: "cursorConnected")
     loop = Task { [weak self] in
-      await self?.refresh()
+      await self?.refreshIfDue()
       while !Task.isCancelled {
         do { try await Task.sleep(for: .seconds(30)) } catch { break }
         guard let self else { break }
@@ -161,8 +168,34 @@ final class AppModel {
   }
 
   private func refreshIfDue() async {
-    guard Date.now.timeIntervalSince(lastRefresh) >= quotaRefreshInterval.duration else { return }
-    await refresh()
+    await drainRefreshRequests()
+    // Retention does not depend on a connected or successfully refreshed agent.
+    if Date.now.timeIntervalSince(lastHistoryRead) >= quotaRefreshInterval.duration {
+      await reloadHistory()
+    }
+  }
+
+  private var automaticRefreshAgents: Set<AgentID> {
+    var agents: Set<AgentID> =
+      visibleQuotaPanels.isEmpty ? [selection?.agent ?? .codex] : Set(AgentID.allCases)
+    if !cursorUsesLocalSession && !cursorBrowserEnabled { agents.remove(.cursor) }
+    return agents
+  }
+
+  func setQuotaPanelVisible(_ panel: QuotaPanel, _ visible: Bool) {
+    let wasVisible = visibleQuotaPanels.contains(panel)
+    guard wasVisible != visible else { return }
+    if visible {
+      visibleQuotaPanels.insert(panel)
+      Task { [weak self] in await self?.refresh() }
+    } else {
+      visibleQuotaPanels.remove(panel)
+      pauseInactiveCursor()
+    }
+  }
+
+  private func pauseInactiveCursor() {
+    if !automaticRefreshAgents.contains(.cursor) { cursorSignIn?.pauseCollection() }
   }
 
   var pinned: (AgentSnapshot, AllowanceWindow)? {
@@ -246,75 +279,148 @@ final class AppModel {
   }
 
   func refresh() async {
-    guard !isDemo, !isRefreshing, !cursorConnecting, !cursorDisconnecting,
-      Date.now.timeIntervalSince(lastRefresh) >= 15
-    else { return }
+    guard !isDemo else { return }
+    pendingAutomaticRefresh.formUnion(automaticRefreshAgents)
+    await drainRefreshRequests()
+  }
+
+  /// Explicit source actions in Settings may refresh that source even with the panel closed.
+  func refresh(agent: AgentID) async {
+    guard !isDemo else { return }
+    pendingExplicitRefresh.insert(agent)
+    await drainRefreshRequests()
+  }
+
+  private func drainRefreshRequests() async {
+    guard !isDemo, !isRefreshing, sourceChangeDepth == 0 else { return }
     isRefreshing = true
-    let generation = configurationGeneration
     defer {
       isRefreshing = false
-      if refreshAgain {
-        refreshAgain = false
-        lastRefresh = .distantPast
-        Task { await refresh() }
+      pauseInactiveCursor()
+    }
+    // Requests arriving during an awaited reading are coalesced, not dropped.
+    // Resolve the automatic scope each pass: a panel may have closed meanwhile.
+    while sourceChangeDepth == 0 {
+      let automatic = automaticRefreshAgents
+      let explicit = pendingExplicitRefresh
+      pendingExplicitRefresh.removeAll()
+      let immediate = explicit.union(pendingAutomaticRefresh.intersection(automatic))
+      pendingAutomaticRefresh.removeAll()
+      let now = Date.now
+      var agents = Set(
+        automatic.filter {
+          now.timeIntervalSince(lastRefresh[$0] ?? .distantPast) >= quotaRefreshInterval.duration
+        })
+      agents.formUnion(
+        immediate.filter {
+          now.timeIntervalSince(lastRefresh[$0] ?? .distantPast) >= 15
+        })
+      if cursorConnecting || cursorDisconnecting
+        || (!cursorUsesLocalSession && !cursorBrowserEnabled)
+      {
+        agents.remove(.cursor)
+      }
+      guard !agents.isEmpty else { break }
+      await collect(agents: agents, explicit: explicit)
+    }
+  }
+
+  private func beginSourceChange() {
+    sourceChangeDepth += 1
+    configurationGeneration += 1
+  }
+
+  private func endSourceChange() {
+    sourceChangeDepth -= 1
+    // Awaited WebKit/connector changes must all finish before a retry can start.
+    // Otherwise a late monitor.forget could invalidate that retry as well.
+    if sourceChangeDepth == 0 {
+      Task { [weak self] in await self?.drainRefreshRequests() }
+    }
+  }
+
+  private func collect(agents: Set<AgentID>, explicit: Set<AgentID>) async {
+    let generation = configurationGeneration
+    var attempts: [AgentID: Date] = [:]
+    defer {
+      if generation != configurationGeneration {
+        // A connection change invalidates the monitor's entire in-flight batch.
+        // Don't rate-limit discarded work as though it were a completed reading.
+        for (agent, date) in attempts where lastRefresh[agent] == date {
+          lastRefresh[agent] = nil
+        }
+        pendingAutomaticRefresh.formUnion(agents)
+        pendingExplicitRefresh.formUnion(explicit.intersection(agents))
       }
     }
-    lastRefresh = .now
-    var updated = await monitor.refresh()
-    if cursorUsesLocalSession {
-      let cursorSnapshot = await cursorLocal.read()
-      let issue = await cursorLocal.issue
-      guard generation == configurationGeneration, cursorUsesLocalSession else {
-        refreshAgain = true
-        return
-      }
-      cursorMessage = cursorConnectionMessage(snapshot: cursorSnapshot, issue: issue)
-      await monitor.accept(cursorSnapshot)
-      updated = await monitor.current()
-    } else if let signIn = cursorSignIn, let cursorSnapshot = await signIn.readSnapshot(),
-      cursorSignIn === signIn, generation == configurationGeneration
+    let connectorAgents = agents.subtracting([.cursor])
+    for agent in connectorAgents {
+      let date = Date.now
+      attempts[agent] = date
+      lastRefresh[agent] = date
+    }
+    _ = await monitor.refresh(agents: connectorAgents)
+    guard generation == configurationGeneration else { return }
+    var refreshed = connectorAgents
+    // Starting the CLI may take time. Recheck scope before starting another source.
+    if agents.contains(.cursor), !cursorConnecting, !cursorDisconnecting,
+      automaticRefreshAgents.contains(.cursor) || explicit.contains(.cursor)
     {
-      await monitor.accept(cursorSnapshot)
-      updated = await monitor.current()
-    }
-    guard generation == configurationGeneration else {
-      refreshAgain = true
-      return
-    }
-    snapshots = AgentID.allCases.compactMap { agent in updated.first { $0.agent == agent } }
-    chooseInitialWindows()
-    do {
-      let readings = try await history?.samples() ?? []
-      guard generation == configurationGeneration else {
-        refreshAgain = true
-        return
+      let date = Date.now
+      attempts[.cursor] = date
+      lastRefresh[.cursor] = date
+      refreshed.insert(.cursor)
+      if cursorUsesLocalSession {
+        let cursorSnapshot = await cursorLocal.read()
+        let issue = await cursorLocal.issue
+        guard generation == configurationGeneration, cursorUsesLocalSession else { return }
+        cursorMessage = cursorConnectionMessage(snapshot: cursorSnapshot, issue: issue)
+        await monitor.accept(cursorSnapshot)
+      } else if cursorBrowserEnabled {
+        let signIn = prepareCursor()
+        signIn.resume()
+        if let cursorSnapshot = await signIn.readSnapshot(), cursorSignIn === signIn,
+          generation == configurationGeneration
+        {
+          await monitor.accept(cursorSnapshot)
+        }
       }
-      displayDate = .now
-      samples = readings
-    } catch { errorMessage = localized("Не удалось прочитать историю.", "Could not read history.") }
-    let storageFailed = await monitor.storageFailed
-    guard generation == configurationGeneration else {
-      refreshAgain = true
-      return
     }
+    let updated = await monitor.current()
+    guard generation == configurationGeneration else { return }
+    snapshots = updated
+    chooseInitialWindows()
+    await reloadHistory()
+    let storageFailed = await monitor.storageFailed
+    guard generation == configurationGeneration else { return }
     if storageFailed {
       errorMessage = localized(
         "Не все показания удалось сохранить.", "Some readings could not be saved.")
     }
-    await notifyThresholds(generation: generation)
-    guard generation == configurationGeneration else {
-      refreshAgain = true
-      return
-    }
+    await notifyThresholds(generation: generation, agents: refreshed)
+    guard generation == configurationGeneration else { return }
     do { try cacheStore.write(snapshots) } catch {
       errorMessage = localized(
         "Не удалось сохранить последние показания.", "Could not cache the latest readings.")
     }
   }
 
+  private func reloadHistory() async {
+    lastHistoryRead = .now
+    do {
+      samples = try await history?.samples() ?? []
+      displayDate = .now
+    } catch { errorMessage = localized("Не удалось прочитать историю.", "Could not read history.") }
+  }
+
   func pin(agent: AgentID, window: AllowanceWindow) {
+    let changedAgent = selection?.agent != agent
     selection = WindowSelection(agent: agent, windowID: window.id)
     if !isDemo { defaults.set(try? JSONEncoder().encode(selection), forKey: "pinnedWindow") }
+    if changedAgent {
+      pauseInactiveCursor()
+      Task { [weak self] in await self?.refresh() }
+    }
   }
   func setChartWindow(_ id: String, agent: AgentID) {
     chartSelections[agent] = id
@@ -326,8 +432,8 @@ final class AppModel {
   }
   func applyCodexPath() async {
     guard !isDemo else { return }
-    configurationGeneration += 1
-    // Claude scope rotation also rebuilds these connectors, without changing Codex.
+    beginSourceChange()
+    defer { endSourceChange() }
     if codexPath != (defaults.string(forKey: "codexPath") ?? "") {
       if let index = snapshots.firstIndex(where: { $0.agent == .codex }) {
         snapshots[index] = AgentSnapshot(agent: .codex)
@@ -335,24 +441,26 @@ final class AppModel {
       await monitor.forget(.codex)
     }
     defaults.set(codexPath, forKey: "codexPath")
+    await rebuildConnectors()
+    lastRefresh[.codex] = nil
+    await refresh(agent: .codex)
+  }
+
+  private func rebuildConnectors() async {
     await monitor.replaceConnectors([
       CodexConnector(executable: ExecutableLocator.find("codex", explicit: codexPath)),
       ClaudeConnector(
         file: dataDirectory.appendingPathComponent("claude-statusline.json"),
         expectedScope: claudeScope),
     ])
-    lastRefresh = .distantPast
-    if isRefreshing {
-      refreshAgain = true
-      return
-    }
-    await refresh()
   }
   func connectLocalCursor() async {
     guard !isDemo, !cursorDisconnecting, !cursorConnecting else { return }
+    beginSourceChange()
+    defer { endSourceChange() }
     cursorConnecting = true
-    configurationGeneration += 1
     cursorUsesLocalSession = true
+    cursorBrowserEnabled = false
     defaults.set(true, forKey: "cursorLocalSessionEnabled")
     defaults.set(false, forKey: "cursorConnected")
     cursorSignIn?.suspend()
@@ -366,9 +474,11 @@ final class AppModel {
 
   func connectCursor() async {
     guard !isDemo, !cursorDisconnecting, !cursorConnecting else { return }
+    beginSourceChange()
+    defer { endSourceChange() }
     cursorConnecting = true
-    configurationGeneration += 1
     cursorUsesLocalSession = false
+    cursorBrowserEnabled = true
     defaults.set(false, forKey: "cursorLocalSessionEnabled")
     defaults.set(true, forKey: "cursorConnected")
     await clearCursorReading()
@@ -378,26 +488,39 @@ final class AppModel {
   private func prepareCursor() -> CursorSignIn {
     if let cursorSignIn { return cursorSignIn }
     let signIn = CursorSignIn { [weak self] message in self?.cursorMessage = message }
-    signIn.didConnect = { [weak self] in
-      Task { @MainActor in
-        guard let self else { return }
-        self.lastRefresh = .distantPast
-        if self.isRefreshing {
-          self.refreshAgain = true
+    signIn.didConnect = { [weak self, weak signIn] in
+      Task { @MainActor [weak self, weak signIn] in
+        guard let self, let signIn, self.cursorSignIn === signIn else { return }
+        guard
+          self.automaticRefreshAgents.contains(.cursor)
+            || signIn.isPresented
+        else {
+          self.pauseInactiveCursor()
           return
         }
-        await self.refresh()
+        // Resuming only starts navigation, not a quota read. Allow its first
+        // completed page to be read; later navigations keep the per-agent guard.
+        if signIn.needsInitialRead { self.lastRefresh[.cursor] = nil }
+        if signIn.isPresented {
+          self.pendingExplicitRefresh.insert(.cursor)
+        } else {
+          self.pendingAutomaticRefresh.insert(.cursor)
+        }
+        await self.drainRefreshRequests()
       }
     }
+    signIn.didClose = { [weak self] in self?.pauseInactiveCursor() }
     cursorSignIn = signIn
     return signIn
   }
   func disconnectCursor() async {
     guard !isDemo, !cursorDisconnecting, !cursorConnecting else { return }
-    configurationGeneration += 1
+    beginSourceChange()
+    defer { endSourceChange() }
     cursorDisconnecting = true
     defer { cursorDisconnecting = false }
     cursorUsesLocalSession = false
+    cursorBrowserEnabled = false
     defaults.set(false, forKey: "cursorLocalSessionEnabled")
     defaults.set(false, forKey: "cursorConnected")
     let signIn = cursorSignIn
@@ -419,8 +542,8 @@ final class AppModel {
   }
 
   private func requestCursorRefresh() async {
-    lastRefresh = .distantPast
-    if isRefreshing { refreshAgain = true } else { await refresh() }
+    lastRefresh[.cursor] = nil
+    await refresh(agent: .cursor)
   }
 
   private func cursorConnectionMessage(
@@ -465,6 +588,8 @@ final class AppModel {
   }
   func reconnectClaude() async {
     guard !isDemo, !claudeConnecting else { return }
+    beginSourceChange()
+    defer { endSourceChange() }
     claudeConnecting = true
     defer { claudeConnecting = false }
     let reinstall = claudeManaged
@@ -484,12 +609,16 @@ final class AppModel {
   private func rotateClaudeScope() async throws {
     let scope = UUID().uuidString
     try ClaudeConnectionStore.write(scope: scope, directory: dataDirectory)
-    configurationGeneration += 1
     claudeScope = scope
     claudeConfigured = false
     defaults.set(claudeScope, forKey: "claudeScope")
     await monitor.forget(.claude)
-    await applyCodexPath()
+    if let index = snapshots.firstIndex(where: { $0.agent == .claude }) {
+      snapshots[index] = AgentSnapshot(agent: .claude)
+    }
+    await rebuildConnectors()
+    lastRefresh[.claude] = nil
+    try? cacheStore.write(snapshots)
   }
 
   var claudeSettingsURL: URL {
@@ -513,6 +642,8 @@ final class AppModel {
 
   func connectClaude() async {
     guard !isDemo, !claudeConnecting else { return }
+    beginSourceChange()
+    defer { endSourceChange() }
     claudeConnecting = true
     defer { claudeConnecting = false }
     do {
@@ -531,12 +662,14 @@ final class AppModel {
       "Настроено. Перезапустите Claude Code, дождитесь ответа агента и обновите показания. Существующая строка статуса сохранена.",
       "Configured. Restart Claude Code, wait for an agent response, then refresh readings. Your existing status line is preserved."
     )
-    lastRefresh = .distantPast
-    if isRefreshing { refreshAgain = true } else { await refresh() }
+    lastRefresh[.claude] = nil
+    await refresh(agent: .claude)
   }
 
   func disconnectClaude() async {
     guard !isDemo, !claudeConnecting else { return }
+    beginSourceChange()
+    defer { endSourceChange() }
     claudeConnecting = true
     defer { claudeConnecting = false }
     do {
@@ -655,8 +788,8 @@ final class AppModel {
       pin(agent: .codex, window: window)
     }
   }
-  private func notifyThresholds(generation: Int) async {
-    for snapshot in snapshots {
+  private func notifyThresholds(generation: Int, agents: Set<AgentID>) async {
+    for snapshot in snapshots where agents.contains(snapshot.agent) {
       guard generation == configurationGeneration else { return }
       guard let scope = snapshot.accountScope else { continue }
       for window in snapshot.windows {

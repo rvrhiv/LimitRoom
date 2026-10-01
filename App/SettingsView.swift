@@ -136,8 +136,8 @@ struct SettingsView: View {
           }
           Text(
             localized(
-              "Интервал для всех агентов. После пробуждения Mac показания обновляются сразу; вручную — через меню действий панели.",
-              "Applies to all agents. Readings refresh on wake; use the panel's actions menu to refresh manually."
+              "В фоне обновляется только выбранный агент. Открытие панели обновляет всех подключённых; пока панель открыта, интервал действует для всех. Вручную — через меню действий панели.",
+              "Only the selected agent refreshes in the background. Opening the panel refreshes all connected agents; while it stays open, this interval applies to all. Use the panel's actions menu to refresh manually."
             )
           )
           .font(.callout).foregroundStyle(.secondary)

@@ -8,14 +8,28 @@ enum AppIdentity {
     Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? "LimitRoom Dev"
   }
   static var version: String {
-    Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "Dev"
+    guard
+      let base = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+    else { return "Dev" }
+    guard isDevelopmentBuild else { return base }
+    return "\(base)-dev.\(developmentBuild ?? "local")"
+  }
+  private static var developmentBuild: String? {
+    guard
+      let raw = Bundle.main.object(forInfoDictionaryKey: "LimitRoomDevelopmentBuild") as? String,
+      let number = UInt64(raw), number > 0
+    else { return nil }
+    return String(number)
   }
   static var build: String {
     Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
   }
   static var versionLabel: String { version == "Dev" ? version : "v\(version)" }
   static var versionDescription: String {
-    "\(name) \(version) · " + localized("сборка ", "build ") + build
+    if isDevelopmentBuild {
+      return "\(name) \(version) · " + localized("сборка для разработки", "development build")
+    }
+    return "\(name) \(version) · " + localized("сборка ", "build ") + build
   }
 }
 

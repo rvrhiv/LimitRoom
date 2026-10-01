@@ -50,6 +50,8 @@ Cursor's dashboard endpoints are private and may change. Personal and team pools
 
 Select a quota row in an agent card to pin that exact window. Both presentation modes use this selection; browsing another card or the Statistics tab does not change it. Expand **Subscription and source** for the facts the agent actually reports.
 
+Plan names preserve provider variants. Codex distinguishes `pro` and `prolite`, but its current interface does not report a Pro usage multiplier. LimitRoom does not guess ×5, ×10, or another tier; check the exact subscription in ChatGPT.
+
 Extra **Resets remaining** and **Resets used** appear there only when the source reports a count and the reading is fresh. Codex can report remaining resets; its current interface does not provide a complete used count. Claude Code and Cursor do not supply either count through their current connections, so those rows stay hidden. These are additional resets, not automatic quota renewals. LimitRoom does not spend them.
 
 In **Settings → Appearance**:
@@ -60,7 +62,9 @@ In **Settings → Appearance**:
 
 The menu bar is the default and the fallback when a supported built-in notched display is unavailable. The notch hides for fullscreen and session transitions. Its wings can cover menu-bar items because macOS does not reserve space for them; reduce their width, hide a side, or use menu-bar mode. Haptics depend on a supported trackpad.
 
-In **General**, select a quota refresh interval of 1, 5, 30, or 60 minutes (default: 5). Manual refresh and wake also trigger checks, subject to request guards. Longer intervals can leave readings visibly stale. Low-quota notifications are opt-in. Launch at login is selected by default during onboarding; turn it off there before completing setup, or change it later in General.
+In **General**, select a quota refresh interval of 1, 5, 30, or 60 minutes (default: 5). Only the selected agent refreshes in the background. Opening the menu-bar or notch panel refreshes all connected agents, and they keep refreshing at that interval while it stays open. Closing returns to selected-only collection; explicit connection actions can also refresh their agent. Manual refresh and wake respect a 15-second guard per agent. An already-started reading may finish after closing.
+
+Older readings stay visible with a clock and gray quota values, progress, and reset text; they are not current measurements. Unselected agents may have gaps in their history. Low-quota notifications are opt-in and follow the collection scope. Launch at login is selected by default during onboarding; turn it off there before completing setup, or change it later in General.
 
 ## History and meaning
 

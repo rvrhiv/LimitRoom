@@ -4,7 +4,7 @@ import AppKit
 import WebKit
 
 @MainActor
-final class CursorSignIn: NSObject, WKNavigationDelegate {
+final class CursorSignIn: NSObject, WKNavigationDelegate, NSWindowDelegate {
   private let webView: WKWebView
   private let window: NSWindow
   private var message: ((String) -> Void)?
@@ -14,7 +14,14 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
   }
   private var lastGood: AgentSnapshot?
   private var tokenCache: CursorTokenHistoryCache?
+  private var isPaused = true
+  private var dashboardReady = false
+  private var needsReload = false
+  private var navigationGeneration = 0
+  private(set) var needsInitialRead = false
+  private(set) var isPresented = false
   var didConnect: (() -> Void)?
+  var didClose: (() -> Void)?
 
   init(message: @escaping (String) -> Void) {
     self.message = message
@@ -30,22 +37,47 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
     window.title = "Cursor — \(AppIdentity.name)"
     window.isReleasedWhenClosed = false
     window.contentView = webView
+    window.delegate = self
     webView.navigationDelegate = self
   }
 
   func show() {
+    isPresented = true
     window.center()
     window.makeKeyAndOrderFront(nil)
     NSApp.activate(ignoringOtherApps: true)
-    if webView.url == nil {
-      webView.load(URLRequest(url: URL(string: "https://cursor.com/dashboard")!))
-    }
+    resume(allowVisibleRetry: true)
     message?(
       localized(
         "Завершите вход в открывшемся окне Cursor.", "Complete sign-in in the Cursor window."))
   }
+  func windowWillClose(_ notification: Notification) {
+    isPresented = false
+    didClose?()
+  }
+  func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+    dashboardReady = false
+    navigationGeneration += 1
+  }
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-    if trustedDashboard { didConnect?() }
+    guard !isPaused, !webView.isLoading, trustedDashboard else { return }
+    dashboardReady = true
+    needsReload = false
+    didConnect?()
+  }
+  func webView(
+    _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
+    withError error: Error
+  ) {
+    navigationFailed(error)
+  }
+  func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+    navigationFailed(error)
+  }
+  private func navigationFailed(_ error: Error) {
+    guard !isPaused, (error as NSError).code != NSURLErrorCancelled else { return }
+    dashboardReady = false
+    needsReload = true
   }
   func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction) async
     -> WKNavigationActionPolicy
@@ -56,7 +88,9 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
     return .allow
   }
   func readSnapshot() async -> AgentSnapshot? {
-    guard trustedDashboard else { return nil }
+    guard !isPaused, dashboardReady, !webView.isLoading, trustedDashboard else { return nil }
+    needsInitialRead = false
+    let generation = navigationGeneration
     // Executed in an isolated JS world. Cookies remain entirely inside this WebKit profile.
     let now = Date.now
     do {
@@ -64,6 +98,7 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
         CursorTokenHistory.webKitScript,
         arguments: ["cachedSubject": tokenCache?.subject(at: now) ?? ""], in: nil,
         contentWorld: .defaultClient)
+      guard generation == navigationGeneration, !isPaused else { return nil }
       guard trustedDashboard, let json = result as? String else { return failed(.unavailable) }
       if json == "signed_out" {
         lastGood = nil
@@ -87,31 +122,52 @@ final class CursorSignIn: NSObject, WKNavigationDelegate {
             "Signed in, but the dashboard returned no measurable personal allowance."))
       return snapshot
     } catch ConnectorError.signedOut {
+      guard generation == navigationGeneration, !isPaused else { return nil }
       lastGood = nil
       tokenCache = nil
       return failed(.signedOut)
-    } catch { return failed(.unavailable) }
-  }
-  func resume() {
-    if webView.url == nil {
-      webView.load(URLRequest(url: URL(string: "https://cursor.com/dashboard")!))
+    } catch {
+      guard generation == navigationGeneration, !isPaused else { return nil }
+      return failed(.unavailable)
     }
+  }
+  func resume(allowVisibleRetry: Bool = false) {
+    guard isPaused || (needsReload && !webView.isLoading && (!isPresented || allowVisibleRetry))
+    else { return }
+    isPaused = false
+    dashboardReady = false
+    needsReload = false
+    needsInitialRead = true
+    navigationGeneration += 1
+    webView.load(URLRequest(url: URL(string: "https://cursor.com/dashboard")!))
+  }
+  func pauseCollection() {
+    guard !isPresented, !isPaused else { return }
+    isPaused = true
+    dashboardReady = false
+    navigationGeneration += 1
+    webView.stopLoading()
+    // stopLoading alone leaves a loaded dashboard's scripts and timers running.
+    // Unload the page, but retain its cookies and same-account token history cache.
+    webView.loadHTMLString("", baseURL: nil)
   }
   func suspend() {
     // An awaited WebKit read can still finish after stopLoading(). It must not
     // overwrite the connection message of a newly selected source.
     message = nil
     didConnect = nil
+    didClose = nil
+    isPresented = false
     lastGood = nil
     tokenCache = nil
-    webView.stopLoading()
+    pauseCollection()
     window.orderOut(nil)
   }
   func signOut() async {
     lastGood = nil
     tokenCache = nil
-    webView.stopLoading()
-    webView.loadHTMLString("", baseURL: nil)
+    isPresented = false
+    pauseCollection()
     await webView.configuration.websiteDataStore.removeData(
       ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
     window.orderOut(nil)

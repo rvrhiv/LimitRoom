@@ -98,16 +98,19 @@ private struct CompactIndicatorContent: View {
     HStack(spacing: 4 * scale) {
       if reading.demo && showsDemoLabel { Text("DEMO").font(.system(size: 7, weight: .semibold)) }
       if components.icon {
-        AgentIcon(agent: reading.agent, size: 15 * scale).opacity(reading.stale ? 0.55 : 1)
+        AgentIcon(agent: reading.agent, size: 15 * scale)
+          .opacity(reading.stale ? staleReadingOpacity : 1)
       }
       if components.ring {
         CircularGauge(value: reading.remaining, lineWidth: 2.2 * scale)
-          .frame(width: 16 * scale, height: 16 * scale).opacity(reading.stale ? 0.55 : 1)
+          .frame(width: 16 * scale, height: 16 * scale)
+          .opacity(reading.stale ? staleReadingOpacity : 1)
       }
       if components.percentage {
         Text(remainingPercentLabel(reading.remaining, compact: true))
           .font(.system(size: 12 * scale, weight: .semibold)).monospacedDigit()
           .lineLimit(1).minimumScaleFactor(0.8)
+          .opacity(reading.stale ? staleReadingOpacity : 1)
       }
       if reading.stale {
         Image(systemName: "clock").font(.system(size: 8 * scale))
@@ -125,6 +128,9 @@ private struct CompactIndicatorContent: View {
     .help(reading.accessibilityDescription)
   }
 }
+
+// Template status images use alpha, not RGB color, to appear gray in both themes.
+let staleReadingOpacity = 0.5
 
 func shortWindowTitle(_ window: AllowanceWindow) -> String {
   window.title

@@ -27,6 +27,13 @@ limitroom_staged_app=''
 limitroom_previous_app=''
 limitroom_rollback_armed=false
 limitroom_promoted=false
+limitroom_dev_state="$limitroom_root/.local-builds"
+limitroom_dev_lock="$limitroom_dev_state/development.lock"
+limitroom_dev_lock_owned=false
+limitroom_dev_counter=''
+limitroom_dev_counter_staging=''
+limitroom_dev_number=''
+limitroom_version=''
 
 limitroom_die() {
   echo "$*" >&2
@@ -44,6 +51,36 @@ limitroom_is_running() {
     fi
   done < <(/bin/ps -axo command=)
   return 1
+}
+
+limitroom_prepare_dev_number() {
+  limitroom_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$limitroom_product_app/Contents/Info.plist")"
+  [[ "$limitroom_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || limitroom_die 'Invalid development base version.'
+  limitroom_dev_counter="$limitroom_dev_state/dev-$limitroom_version"
+  local limitroom_previous_number=0
+  local limitroom_existing_number=''
+  [[ ! -L "$limitroom_dev_counter" ]] || limitroom_die "Refusing symlinked Dev counter: $limitroom_dev_counter"
+  if [[ -e "$limitroom_dev_counter" ]]; then
+    [[ -f "$limitroom_dev_counter" && $(/usr/bin/stat -f '%z' "$limitroom_dev_counter") -le 16 ]] ||
+      limitroom_die "Invalid Dev counter file: $limitroom_dev_counter"
+    limitroom_previous_number="$(<"$limitroom_dev_counter")"
+    [[ "$limitroom_previous_number" =~ ^[1-9][0-9]{0,8}$ ]] ||
+      limitroom_die "Invalid Dev counter value: $limitroom_dev_counter"
+  fi
+  # Recover a successful promotion if its subsequent counter write was interrupted.
+  if [[ -d "$limitroom_app" ]] && [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$limitroom_app/Contents/Info.plist")" == "$limitroom_version" ]]; then
+    limitroom_existing_number="$(/usr/libexec/PlistBuddy -c 'Print :LimitRoomDevelopmentBuild' "$limitroom_app/Contents/Info.plist" 2>/dev/null || true)"
+    if [[ -n "$limitroom_existing_number" ]]; then
+      [[ "$limitroom_existing_number" =~ ^[1-9][0-9]{0,8}$ ]] || limitroom_die 'Invalid Dev number in the previous app.'
+      if (( limitroom_existing_number > limitroom_previous_number )); then
+        limitroom_previous_number="$limitroom_existing_number"
+      fi
+    fi
+  fi
+  (( limitroom_previous_number < 999999999 )) || limitroom_die 'Dev counter exhausted.'
+  limitroom_dev_number=$((limitroom_previous_number + 1))
+  limitroom_dev_counter_staging="$(/usr/bin/mktemp "$limitroom_dev_state/next-counter.XXXXXX")"
+  printf '%s\n' "$limitroom_dev_number" > "$limitroom_dev_counter_staging"
 }
 
 limitroom_validate_app() {
@@ -112,7 +149,13 @@ limitroom_cleanup_staging() {
     fi
   fi
   if [[ "$limitroom_preserve_staging" == false && -n "$limitroom_staging_directory" && -d "$limitroom_staging_directory" && ! -L "$limitroom_staging_directory" ]]; then
-    /bin/rm -rf "$limitroom_staging_directory"
+    /bin/rm -rf "$limitroom_staging_directory" || limitroom_status=1
+  fi
+  if [[ -n "$limitroom_dev_counter_staging" && -f "$limitroom_dev_counter_staging" && ! -L "$limitroom_dev_counter_staging" ]]; then
+    /bin/rm -f "$limitroom_dev_counter_staging" || limitroom_status=1
+  fi
+  if [[ "$limitroom_dev_lock_owned" == true ]]; then
+    /bin/rmdir "$limitroom_dev_lock" || limitroom_status=1
   fi
   trap - EXIT
   exit "$limitroom_status"
@@ -155,12 +198,27 @@ elif [[ -e "$limitroom_product_app" || -L "$limitroom_product_app" ]]; then
   limitroom_validate_app "$limitroom_product_app" "$limitroom_name" "$limitroom_flavor" unmarked
 fi
 
+if [[ "$limitroom_flavor" == development ]]; then
+  [[ ! -L "$limitroom_dev_state" ]] || limitroom_die "Refusing symlinked Dev state: $limitroom_dev_state"
+  if [[ -e "$limitroom_dev_state" && ! -d "$limitroom_dev_state" ]]; then
+    limitroom_die "Refusing non-directory Dev state: $limitroom_dev_state"
+  fi
+  mkdir -p "$limitroom_dev_state"
+  if ! mkdir "$limitroom_dev_lock"; then
+    limitroom_die "Another Dev build owns $limitroom_dev_lock. If a build was interrupted, remove only that empty lock after confirming no Dev build is running."
+  fi
+  limitroom_dev_lock_owned=true
+fi
+
 xcodebuild -project "$limitroom_root/LimitRoom.xcodeproj" -scheme LimitRoom \
   -configuration "$limitroom_configuration" -destination 'generic/platform=macOS' \
   -derivedDataPath "$limitroom_build/DerivedData" CODE_SIGNING_ALLOWED=NO ENABLE_DEBUG_DYLIB=NO \
   LIMITROOM_BUILD_FLAVOR="$limitroom_flavor" build -quiet
 
 limitroom_validate_app "$limitroom_product_app" "$limitroom_name" "$limitroom_flavor" unmarked
+if [[ "$limitroom_flavor" == development ]]; then
+  limitroom_prepare_dev_number
+fi
 
 # Package and verify a fresh app before touching the current local copy.
 if [[ -e "$limitroom_staging_root" || -L "$limitroom_staging_root" ]]; then
@@ -180,6 +238,9 @@ touch "$limitroom_staged_app/Contents/Resources/LimitRoom-local-build"
 cp "$limitroom_product_app/Contents/MacOS/LimitRoom" "$limitroom_staged_app/Contents/MacOS/LimitRoom"
 cp "$limitroom_products/limitroom-claude-bridge" "$limitroom_staged_app/Contents/Helpers/limitroom-claude-bridge"
 cp "$limitroom_product_app/Contents/Info.plist" "$limitroom_staged_app/Contents/Info.plist"
+if [[ "$limitroom_flavor" == development ]]; then
+  /usr/libexec/PlistBuddy -c "Add :LimitRoomDevelopmentBuild string $limitroom_dev_number" "$limitroom_staged_app/Contents/Info.plist"
+fi
 cp "$limitroom_product_app/Contents/Resources/LimitRoom.icns" "$limitroom_staged_app/Contents/Resources/LimitRoom.icns"
 cp "$limitroom_root/Resources/Sparkle-LICENSE.txt" "$limitroom_staged_app/Contents/Resources/Sparkle-LICENSE.txt"
 cp "$limitroom_root/LICENSE" "$limitroom_staged_app/Contents/Resources/LICENSE"
@@ -221,6 +282,11 @@ if ! /bin/mv "$limitroom_staged_app" "$limitroom_app"; then
   limitroom_die "Failed to promote the verified app: $limitroom_app"
 fi
 limitroom_promoted=true
+if [[ "$limitroom_flavor" == development ]]; then
+  # Commit only after the verified app is promoted; failed builds keep the old counter.
+  /bin/mv -f "$limitroom_dev_counter_staging" "$limitroom_dev_counter"
+  limitroom_dev_counter_staging=''
+fi
 
 if [[ -d "$limitroom_previous_app" ]]; then
   /bin/rm -rf "$limitroom_previous_app"
@@ -240,4 +306,7 @@ if [[ "$limitroom_flavor" == development ]]; then
 fi
 
 echo "Built $limitroom_flavor app: $limitroom_app"
+if [[ "$limitroom_flavor" == development ]]; then
+  echo "Development version: $limitroom_version-dev.$limitroom_dev_number"
+fi
 echo "Preview: open '$limitroom_app' --args --demo"

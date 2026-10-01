@@ -22,14 +22,14 @@ public actor AllowanceMonitor {
     generation += 1
     self.connectors = connectors
   }
-  public func refresh() async -> [AgentSnapshot] {
+  public func refresh(agents: Set<AgentID>) async -> [AgentSnapshot] {
     guard !isReading else { return current() }
     isReading = true
     storageFailed = false
     let requestGeneration = generation
     defer { isReading = false }
     await withTaskGroup(of: (AgentID, AgentSnapshot?, SourceState).self) { group in
-      for connector in connectors {
+      for connector in connectors where agents.contains(connector.agent) {
         group.addTask {
           do { return (connector.agent, try await connector.read(), .ready) } catch ConnectorError
             .missingExecutable

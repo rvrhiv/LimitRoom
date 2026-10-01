@@ -39,6 +39,8 @@ Keep these invariants:
 
 Run the installed official CLI's App Server over private stdio. Read account, rate-limit, and optional account-token-usage methods only; do not create conversations or copy authentication files. Prefer named rate-limit buckets, with the legacy response as a fallback. An explicitly configured invalid CLI path must fail clearly rather than select another binary.
 
+Keep the source `planType` unchanged in snapshots and history. The UI formats known codes (including `pro` and `prolite`) and preserves unrecognized variants. The current contract has no Pro usage multiplier; never infer one from percentages, reset windows, or a generic `pro` code.
+
 [`account/usage/read`](https://learn.chatgpt.com/docs/app-server#7-token-usage-chatgpt) provides account-wide daily token counts and an optional lifetime total. Its failure does not invalidate a successful quota read. Bound the request, validate counts and unique calendar dates, and confirm account identity again before publishing token data. Keep missing days distinct from zero and retain provider day labels without timezone rebucketing. Token statistics are memory-only and fetched with quotas; they are not copied into SQLite, the latest-reading cache, or quota exports. Unsupported versions/accounts show unavailable statistics, never a fabricated total.
 
 ### Claude Code
@@ -81,13 +83,18 @@ Cache the grouped projection. For a calmer curve, keep one real observation near
 
 `TokenUsage` is a provider-neutral optional part of a snapshot. The Tokens chart compares daily counts on one calendar axis for 1, 3, 7, 30, or 90 days, ending on the latest reported day across sources. Counts are not cumulative; missing days stay unknown and any connecting line is dashed. Keep source-day and UTC labels explicit, do not turn counts into quota or cost, and never persist token history to the quota database or snapshot cache.
 
-Quota refresh preferences are 1, 5, 30, or 60 minutes, defaulting to 5. One model-owned 30-second display clock checks whether collection is due; manual refresh and wake use the same coalescing and rate guards. Changing preferences must not create another timer. App-update checks are independent.
+Quota refresh preferences are 1, 5, 30, or 60 minutes, defaulting to 5. One model-owned 30-second display clock checks whether collection is due. With quota panels closed, only the pinned agent is collected (Codex before the first selection). Opening either panel requests all connected sources; while open, they share the configured interval. Closing returns to selected-only collection. Unselected history is missing, not zero or synthesized.
+
+Track last attempts per agent. Panel opening, selection changes, manual refresh, and wake use a 15-second per-agent guard; explicit connection changes invalidate that source's guard. Coalesce requests received during a read and resolve automatic scope again before starting the next source. A read already in flight may finish after a panel closes. Source/account generation guards still reject obsolete results; discarded batches retry only after all source mutations finish, resolving scope again. Explicit connection actions may read their source with the panel closed.
+
+Do not resume Cursor's alternative WebKit session at startup unless it is in scope. Unload the hidden dashboard when Cursor leaves scope, retaining cookies and its bounded token cache; merely stopping navigation does not stop a loaded page's timers. A user-opened sign-in window stays active until closed. Retention runs independently of successful collection. Changing preferences must not create another timer. App-update checks are independent.
 
 ## Native presentation
 
 `AppModel` owns data and selection. `PresentationCoordinator` chooses the host, while `ApplicationWindows` reuses settings and history windows. The menu bar and notch share agent cards and indicator components.
 
 - The menu-bar label is one template image. Keep its preview on the same rendering path; a `TimelineView` in this label previously caused a redraw loop.
+- Track menu-panel visibility through its actual native window, not the retained SwiftUI view's lifetime. Stale quota values, progress, and reset text turn gray; template indicators use alpha so both macOS appearances work. Preserve values, selection accents, and the stale clock.
 - One nonactivating AppKit panel integrates the notch and both wings. The camera area has no controls; all hover monitors are event-driven and removed on teardown.
 - Set the panel level **after** `isFloatingPanel`: AppKit otherwise resets it. It sits above status items but below native pop-up menus.
 - Animate native geometry and camera-relative offsets together; keep header content identity and width stable. Avoid a second implicit animation that makes text jump.

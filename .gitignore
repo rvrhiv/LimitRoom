@@ -3,6 +3,7 @@
 .swiftpm/
 .superpowers/
 build/
+.local-builds/
 DerivedData/
 *.xcuserstate
 xcuserdata/

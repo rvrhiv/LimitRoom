@@ -33,15 +33,18 @@ struct AgentCard: View {
       HStack(spacing: 9) {
         AgentIcon(agent: snapshot.agent, size: 16)
           .foregroundStyle(
-            snapshot.agent == .claude ? Color(red: 0.73, green: 0.52, blue: 0.4) : .primary
+            state == .stale
+              ? Color.primary
+              : snapshot.agent == .claude ? Color(red: 0.73, green: 0.52, blue: 0.4) : .primary
           )
+          .opacity(state == .stale ? staleReadingOpacity : 1)
           .frame(width: 29, height: 29)
           .background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 7))
           .accessibilityHidden(true)
         VStack(alignment: .leading, spacing: 3) {
           Text(snapshot.agent.title).font(.system(size: 12, weight: .semibold))
           Text(
-            snapshot.plan
+            snapshot.planLabel
               ?? (needsConnection
                 ? localized("Требуется подключение", "Connection required")
                 : localized("План не указан источником", "Plan not provided"))
@@ -117,6 +120,7 @@ struct AgentCard: View {
         VStack(alignment: .leading, spacing: 4) {
           HStack(spacing: 5) {
             Text(window.title).font(.system(size: 11, weight: .medium)).lineLimit(2)
+              .foregroundStyle(fresh ? Color.primary : .secondary)
             if chosen {
               Text(localized("В индикаторе", "In indicator"))
                 .font(.system(size: 8)).foregroundStyle(accent).fixedSize()
@@ -132,11 +136,12 @@ struct AgentCard: View {
         VStack(alignment: .trailing, spacing: 5) {
           Text(remainingPercentLabel(window.remainingPercent, compact: true))
             .font(.system(size: 14, weight: .semibold)).monospacedDigit()
+            .foregroundStyle(fresh ? Color.primary : .secondary)
           GeometryReader { geometry in
             ZStack(alignment: .leading) {
               Capsule().fill(.primary.opacity(0.1))
               if let percent = window.remainingPercent {
-                Capsule().fill(chosen ? accent : .secondary.opacity(0.65))
+                Capsule().fill(fresh && chosen ? accent : .secondary.opacity(0.65))
                   .frame(width: geometry.size.width * percent / 100)
               }
             }
@@ -163,6 +168,15 @@ struct AgentCard: View {
 
   private var subscriptionDetails: some View {
     VStack(alignment: .leading, spacing: 7) {
+      if let plan = snapshot.planLabel {
+        detail(localized("План", "Plan"), plan)
+        if let raw = snapshot.plan, raw.caseInsensitiveCompare(plan) != .orderedSame {
+          detail(localized("Код плана", "Plan code"), raw)
+        }
+      }
+      if let note = snapshot.planDetailNote {
+        Text(note).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+      }
       detail(
         localized("Аккаунт", "Account"),
         snapshot.accountLabel ?? localized("Не указан источником", "Not provided"))
@@ -221,20 +235,25 @@ struct AgentCard: View {
       }
       ForEach(snapshot.windows) { window in
         Divider().opacity(0.5)
-        detail(window.title, remainingPercentLabel(window.remainingPercent, compact: false))
+        detail(
+          window.title, remainingPercentLabel(window.remainingPercent, compact: false),
+          stale: !snapshot.windowIsFresh(window, at: now))
         detail(
           localized("Сброс", "Reset"),
           window.resetsAt?.formatted(date: .abbreviated, time: .shortened)
-            ?? localized("Время неизвестно", "Time unavailable"))
+            ?? localized("Время неизвестно", "Time unavailable"),
+          stale: !snapshot.windowIsFresh(window, at: now))
       }
     }.font(.system(size: 10)).textSelection(.enabled)
   }
 
-  private func detail(_ title: String, _ value: String) -> some View {
+  private func detail(_ title: String, _ value: String, stale: Bool = false) -> some View {
     HStack(alignment: .top, spacing: 10) {
       Text(title).foregroundStyle(.secondary).frame(width: 103, alignment: .leading)
       Text(value).frame(maxWidth: .infinity, alignment: .leading).fixedSize(
-        horizontal: false, vertical: true)
+        horizontal: false, vertical: true
+      )
+      .foregroundStyle(stale ? Color.secondary : .primary)
     }
   }
   private var emptyDescription: String {

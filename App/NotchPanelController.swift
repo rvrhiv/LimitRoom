@@ -46,6 +46,7 @@ final class NotchPanelController {
   }
 
   func hide() {
+    model.setQuotaPanelVisible(.notch, false)
     cancelOpen()
     cancelClose()
     resizeTask?.cancel()
@@ -72,6 +73,7 @@ final class NotchPanelController {
   }
 
   func close() {
+    model.setQuotaPanelVisible(.notch, false)
     cancelOpen()
     cancelClose()
     state.isHeld = false
@@ -254,6 +256,7 @@ final class NotchPanelController {
     cancelClose()
     guard isVisible, !state.isExpanded else { return }
     state.isExpanded = true
+    model.setQuotaPanelVisible(.notch, true)
     resize(expanded: true)
     let now = ProcessInfo.processInfo.systemUptime
     if userInitiated, !model.isDemo, model.presentation.hapticsEnabled, now - lastHapticAt >= 0.8 {
